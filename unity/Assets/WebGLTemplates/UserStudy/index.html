@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>CDI-AI2THOR</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="stylesheet" href="styles/bulma.min.css" />
+        <link rel="stylesheet" href="styles/main.css" />
+    </head>
+    <body>
+        <main class="">
+            <nav class="navbar" role="navigation" aria-label="main navigation">
+                <div class="navbar-brand">
+                    <a class="navbar-item" href="#">
+                        <img
+                            id="logo-white"
+                            src="images/cdi-logo-white.png"
+                        />
+                        <img
+                            id="logo-black"
+                            src="images/cdi-logo-black.png"
+                        />
+                        <strong>CDI-AI2THOR</strong>
+                    </a>
+                </div>
+
+                <div id="navbarBasicExample" class="navbar-menu">
+                    <div class="navbar-start">
+                        <div class="navbar-item">
+                            <a class="button">
+                                <strong>显示任务</strong>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="navbar-end">
+                        <div class="navbar-item">
+                            <div class="buttons">
+                                <a class="button is-primary">
+                                    <strong>完成</strong>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+            <section id="instructions"></section>
+            <section id="unity">
+                <canvas id="gameContainer"></canvas>
+            </section>
+            <section id="controls">
+                <div class="instruction-line">
+                    <p>
+                        <img
+                            src="images/WASD.png"
+                            class="controls-image"
+                        />
+                    </p>
+                    <p style="margin-left: 5px">
+                        键盘WASD键<strong>移动</strong>。
+                    </p>
+                    <p style="margin-left: 5px">
+                        <img
+                            src="images/arrowkeys.png"
+                            class="controls-image"
+                        />
+                    </p>
+                    <p style="margin-left: 5px">
+                        键盘上下左右键<strong>旋转视角</strong>。
+                    </p>
+
+                    <p style="margin-left: 5px">
+                        <img
+                            src="images/mouselook.png"
+                            class="controls-image"
+                        />
+                    </p>
+                    <p style="margin-left: 2px">
+                        <img
+                            src="images/leftclick.png"
+                            style="width: 1em"
+                        />
+                    </p>
+                    <p style="margin-left: 5px">
+                        移动鼠标可以<strong>选择物体</strong>。单击物体<strong>捡起或放下</strong>。
+                    </p>
+
+                    <!-- <p>
+                        <img
+                            src="images/Control.png"
+                            class="controls-image"
+                        />
+                    </p>
+                    <p>Ctrl键<strong>站起/蹲下</strong></p> -->
+                </div>
+
+                <div class="instruction-line">
+                    <p>
+                        <img
+                            src="images/Shift.png"
+                            class="controls-image"
+                        />
+                    </p>
+                    <p>
+                        <img
+                            src="images/arrowkeys.png"
+                            class="controls-image"
+                        />
+                    </p>
+                    <p>
+                        按住Shift+上下左右可以<strong>上下左右移动手中物体</strong>。
+                    </p>
+                    <p>
+                        <img
+                            src="images/Shift.png"
+                            class="controls-image"
+                        />
+                    </p>
+                    <p>
+                        <img
+                            src="images/WASD.png"
+                            class="controls-image"
+                        />
+                    </p>
+                    <p>按住Shift+WD可以<strong>拉近/推远手中物体</strong>。</p>
+                </div>
+            </section>
+        </main>
+
+        <script src="Build/Unity.loader.js"></script>
+        <script>
+            createUnityInstance(document.querySelector("#gameContainer"), {
+                dataUrl: `Build/Unity.data`,
+                frameworkUrl: "Build/Unity.framework.js",
+                codeUrl: "Build/Unity.wasm",
+                streamingAssetsUrl: "StreamingAssets",
+                companyName: "CDI",
+                productName: "AI2THOR",
+                productVersion: "1.0",
+            })
+                .then((unityInstance) => {
+                    console.log("Unity loaded!");
+                })
+                .catch((message) => {
+                    console.error("Failed to load Unity:", message);
+                });
+        </script>
+    </body>
+</html>
