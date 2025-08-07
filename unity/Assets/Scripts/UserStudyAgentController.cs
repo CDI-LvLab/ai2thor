@@ -9,11 +9,13 @@ namespace UnityStandardAssets.Characters.FirstPerson {
         private float HandMoveMagnitude = 0.1f;
         public PhysicsRemoteFPSAgentController PhysicsController = null;
         private GameObject InputMode_Text = null;
-        private ObjectHighlightController highlightController = null;
+        private ObjectPickPlaceUIController highlightController = null;
         private GameObject throwForceBar = null;
         private bool handMode = false;
+        private Camera m_Camera;
 
-        void Start() {
+        void Start()
+        {
             var Debug_Canvas = GameObject.Find("DebugCanvasPhysics");
             AgentManager agentManager = GameObject
                 .Find("PhysicsSceneManager")
@@ -25,12 +27,14 @@ namespace UnityStandardAssets.Characters.FirstPerson {
             Cursor.lockState = CursorLockMode.None;
             Debug_Canvas.GetComponent<Canvas>().enabled = true;
 
-            highlightController = new ObjectHighlightController(
+            highlightController = new ObjectPickPlaceUIController(
                 PhysicsController,
                 PhysicsController.maxVisibleDistance,
                 true,
                 false
             );
+            
+            m_Camera = Camera.main;
         }
 
         public void OnEnable() {
@@ -71,32 +75,40 @@ namespace UnityStandardAssets.Characters.FirstPerson {
 
         void Update() {
             highlightController.UpdateHighlightedObject(Input.mousePosition);
-            highlightController.MouseControls();
+            highlightController.MouseControls(Input.mousePosition);            
 
-            if (PhysicsController.ReadyForCommand) {
+            if (PhysicsController.ReadyForCommand)
+            {
                 float WalkMagnitude = 0.25f;
-                if (!handMode) {
-                    if (Input.GetKeyDown(KeyCode.W)) {
+                if (!handMode)
+                {
+                    if (Input.GetKeyDown(KeyCode.W))
+                    {
                         executeAction("MoveAhead", "moveMagnitude", WalkMagnitude);
                     }
 
-                    if (Input.GetKeyDown(KeyCode.S)) {
+                    if (Input.GetKeyDown(KeyCode.S))
+                    {
                         executeAction("MoveBack", "moveMagnitude", WalkMagnitude);
                     }
 
-                    if (Input.GetKeyDown(KeyCode.A)) {
+                    if (Input.GetKeyDown(KeyCode.A))
+                    {
                         executeAction("MoveLeft", "moveMagnitude", WalkMagnitude);
                     }
 
-                    if (Input.GetKeyDown(KeyCode.D)) {
+                    if (Input.GetKeyDown(KeyCode.D))
+                    {
                         executeAction("MoveRight", "moveMagnitude", WalkMagnitude);
                     }
 
-                    if (Input.GetKeyDown(KeyCode.UpArrow)) {
+                    if (Input.GetKeyDown(KeyCode.UpArrow))
+                    {
                         executeAction("LookUp", "degrees", 30f);
                     }
 
-                    if (Input.GetKeyDown(KeyCode.DownArrow)) {
+                    if (Input.GetKeyDown(KeyCode.DownArrow))
+                    {
                         executeAction("LookDown", "degrees", 30f);
                     }
 
@@ -111,30 +123,46 @@ namespace UnityStandardAssets.Characters.FirstPerson {
                     }
                 }
 
-                if (Input.GetKeyDown(KeyCode.LeftShift)) {
+                if (Input.GetKeyDown(KeyCode.LeftShift))
+                {
                     handMode = true;
-                } else if (Input.GetKeyUp(KeyCode.LeftShift)) {
+                }
+                else if (Input.GetKeyUp(KeyCode.LeftShift))
+                {
                     handMode = false;
                 }
 
-                if (this.PhysicsController.WhatAmIHolding() != null && handMode) {
+                if (this.PhysicsController.WhatAmIHolding() != null && handMode)
+                {
                     var actionName = "MoveHandForce";
                     var localPos = new Vector3(0, 0, 0);
                     // Debug.Log(" Key down shift ? " + Input.GetKey(KeyCode.LeftAlt) + " up " + Input.GetKeyDown(KeyCode.UpArrow));
-                    if (Input.GetKeyDown(KeyCode.W)) {
+                    if (Input.GetKeyDown(KeyCode.W))
+                    {
                         localPos.z += HandMoveMagnitude;
-                    } else if (Input.GetKeyDown(KeyCode.S)) {
+                    }
+                    else if (Input.GetKeyDown(KeyCode.S))
+                    {
                         localPos.z -= HandMoveMagnitude;
-                    } else if (Input.GetKeyDown(KeyCode.UpArrow)) {
+                    }
+                    else if (Input.GetKeyDown(KeyCode.UpArrow))
+                    {
                         localPos.y += HandMoveMagnitude;
-                    } else if (Input.GetKeyDown(KeyCode.DownArrow)) {
+                    }
+                    else if (Input.GetKeyDown(KeyCode.DownArrow))
+                    {
                         localPos.y -= HandMoveMagnitude;
-                    } else if (Input.GetKeyDown(KeyCode.LeftArrow)) {
+                    }
+                    else if (Input.GetKeyDown(KeyCode.LeftArrow))
+                    {
                         localPos.x -= HandMoveMagnitude;
-                    } else if (Input.GetKeyDown(KeyCode.RightArrow)) {
+                    }
+                    else if (Input.GetKeyDown(KeyCode.RightArrow))
+                    {
                         localPos.x += HandMoveMagnitude;
                     }
-                    if (actionName != "") {
+                    if (actionName != "")
+                    {
                         Dictionary<string, object> action = new Dictionary<string, object>();
                         action["action"] = actionName;
                         action["x"] = localPos.x;
