@@ -1,0 +1,16 @@
+{
+	"folders": [
+		{
+			"name": "ai2thor",
+			"path": "."
+		},
+		{
+			"name": "unity",
+			"path": "unity"
+		},
+		{
+			"name": "template",
+			"path": "template"
+		}
+	]
+}
