@@ -54,10 +54,12 @@ namespace UnityStandardAssets.Characters.FirstPerson {
             // TODO: move debug input field script from, Input Field and enable here
         }
 
-        private void executeAction(string actionName, float moveMagnitude) {
+
+        private void executeAction(string actionName, string argName, float value)
+        {
             Dictionary<string, object> action = new Dictionary<string, object>();
             action["action"] = actionName;
-            action["moveMagnitude"] = moveMagnitude;
+            action[argName] = value;
             PhysicsController.ProcessControlCommand(action);
         }
 
@@ -75,37 +77,37 @@ namespace UnityStandardAssets.Characters.FirstPerson {
                 float WalkMagnitude = 0.25f;
                 if (!handMode) {
                     if (Input.GetKeyDown(KeyCode.W)) {
-                        executeAction("MoveAhead", WalkMagnitude);
+                        executeAction("MoveAhead", "moveMagnitude", WalkMagnitude);
                     }
 
                     if (Input.GetKeyDown(KeyCode.S)) {
-                        executeAction("MoveBack", WalkMagnitude);
+                        executeAction("MoveBack", "moveMagnitude", WalkMagnitude);
                     }
 
                     if (Input.GetKeyDown(KeyCode.A)) {
-                        executeAction("MoveLeft", WalkMagnitude);
+                        executeAction("MoveLeft", "moveMagnitude", WalkMagnitude);
                     }
 
                     if (Input.GetKeyDown(KeyCode.D)) {
-                        executeAction("MoveRight", WalkMagnitude);
+                        executeAction("MoveRight", "moveMagnitude", WalkMagnitude);
                     }
 
                     if (Input.GetKeyDown(KeyCode.UpArrow)) {
-                        executeAction("LookUp");
+                        executeAction("LookUp", "degrees", 30f);
                     }
 
                     if (Input.GetKeyDown(KeyCode.DownArrow)) {
-                        executeAction("LookDown");
+                        executeAction("LookDown", "degrees", 30f);
                     }
 
                     if (Input.GetKeyDown(KeyCode.LeftArrow)) //|| Input.GetKeyDown(KeyCode.J))
                     {
-                        executeAction("RotateLeft");
+                        executeAction("RotateLeft", "degrees", 30f);
                     }
 
                     if (Input.GetKeyDown(KeyCode.RightArrow)) //|| Input.GetKeyDown(KeyCode.L))
                     {
-                        executeAction("RotateRight");
+                        executeAction("RotateRight", "degrees", 30f);
                     }
                 }
 
