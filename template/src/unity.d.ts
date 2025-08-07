@@ -13,5 +13,6 @@ declare global {
             onProgress?: (progress: number) => void,
         ) => Promise<Unity>
         onUnityMetadata: (data: object) => void
+        onGameLoaded: () => void
     }
 }

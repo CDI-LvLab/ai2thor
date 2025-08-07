@@ -7,6 +7,12 @@ window.onUnityMetadata = (data) => {
     window.lastEvent = data
 }
 
+window.onGameLoaded = () => {
+    console.log('Game Loaded!')
+    // Set controller to enable interaction
+    window.Unity?.SendMessage('FPSController', 'SetController', 'USER_STUDY')
+}
+
 onMounted(() => {
     if (!window.createUnityInstance) {
         console.error(
@@ -32,12 +38,6 @@ onMounted(() => {
         .then(async (unityInstance: Unity) => {
             console.log('Unity loaded!', unityInstance)
             window.Unity = unityInstance
-            const result = await unityInstance.SendMessage(
-                'GameController',
-                'Initialize',
-                JSON.stringify({ gridSize: 0.25, agentCount: 2 }),
-            )
-            console.log(result)
         })
         .catch((message) => {
             console.error('Failed to load Unity:', message)
