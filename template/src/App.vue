@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 
+import TaskInstructions from './components/TaskInstructions.vue'
+
+window.onUnityMetadata = (data) => {
+    window.lastEvent = data
+}
+
 onMounted(() => {
     if (!window.createUnityInstance) {
         console.error(
@@ -23,13 +29,53 @@ onMounted(() => {
             productName: 'AI2THOR',
             productVersion: '1.0',
         })
-        .then((unityInstance) => {
+        .then(async (unityInstance: Unity) => {
             console.log('Unity loaded!', unityInstance)
+            window.Unity = unityInstance
+            const result = await unityInstance.SendMessage(
+                'GameController',
+                'Initialize',
+                JSON.stringify({ gridSize: 0.25, agentCount: 2 }),
+            )
+            console.log(result)
         })
         .catch((message) => {
             console.error('Failed to load Unity:', message)
         })
 })
+
+const testFunctions = {
+    LastEvent: () => {
+        console.log(window.lastEvent)
+    },
+
+    左转: () => {
+        window.Unity?.SendMessage(
+            'FPSController',
+            'Step',
+            JSON.stringify({
+                action: 'RotateLeft',
+                degrees: 30,
+            }),
+        )
+    },
+
+    添加第三人称相机: () => {
+        window.Unity?.SendMessage(
+            'FPSController',
+            'Step',
+            JSON.stringify({
+                action: 'AddThirdPartyCamera',
+                position: { x: 0, y: 0, z: 0 },
+                rotation: { x: 0, y: 0, z: 0 },
+            }),
+        )
+    },
+
+    多Agent初始化: () => {
+        window.Unity?.SendMessage('FPSController', 'SpawnAgent', 0)
+    },
+}
 </script>
 
 <template>
@@ -37,7 +83,7 @@ onMounted(() => {
         <canvas id="unity-canvas"></canvas>
     </div>
 
-    <div class="header-container top left">
+    <div class="header-container float top left">
         <div class="header">
             <a-space>
                 <a-space>
@@ -46,36 +92,31 @@ onMounted(() => {
                     </a-avatar>
                     <strong>CDI-AI2THOR</strong>
                 </a-space>
-                <a-button type="text">完成</a-button>
+                <a-button
+                    v-for="(action, name) in testFunctions"
+                    :key="name"
+                    type="text"
+                    @click="action"
+                    >{{ name }}</a-button
+                >
             </a-space>
         </div>
     </div>
 
-    <div class="header-container bottom left" style="width: 30%">
+    <div class="header-container float bottom left" style="width: 30%">
         <a-collapse expand-icon-position="right">
-            <a-collapse-item>
-                <template #header> <strong>任务说明</strong> </template>
-                <template #expand-icon="{ active }">
-                    <a-button type="text" size="small" v-if="active">隐藏</a-button>
-                    <a-button type="text" size="small" v-else>显示</a-button>
-                </template>
-            </a-collapse-item>
+            <TaskInstructions />
         </a-collapse>
     </div>
-
-    <!-- <a-layout-sider
-        collapsible
-        breakpoint="xxl"
-        width="40vw"
-        :collapsed-width="48"
-    ></a-layout-sider> -->
 </template>
 
 <style scoped>
 .header-container {
-    position: fixed;
-    max-width: 40%;
     margin: 1em;
+}
+
+.float {
+    position: fixed;
 }
 
 .left {
@@ -84,6 +125,16 @@ onMounted(() => {
 
 .right {
     right: 0px;
+}
+
+.v-center {
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.h-center {
+    left: 50%;
+    transform: translateX(-50%);
 }
 
 .top {
