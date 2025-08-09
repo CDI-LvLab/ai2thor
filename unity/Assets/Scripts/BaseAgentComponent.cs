@@ -30,6 +30,7 @@ namespace UnityStandardAssets.Characters.FirstPerson {
         public MeshRenderer MyFaceMesh;
         public GameObject[] TargetCircles = null;
         public GameObject[] GripperOpennessStates = new GameObject[7];
+        public string AgentName = "agent";
 
         [HideInInspector]
         public BaseFPSAgentController agent;

@@ -136,6 +136,10 @@ namespace UnityStandardAssets.Characters.FirstPerson {
             get => this.baseAgentComponent.GripperOpennessStates;
         }
 
+        public string AgentName {
+            get => this.baseAgentComponent.AgentName;
+        }
+
         protected bool IsHandDefault = true;
         public GameObject ItemInHand = null; // current object in inventory
         protected bool inTopLevelView = false;
@@ -2598,7 +2602,7 @@ namespace UnityStandardAssets.Characters.FirstPerson {
         public virtual MetadataWrapper generateMetadataWrapper() {
             // AGENT METADATA
             AgentMetadata agentMeta = new AgentMetadata();
-            agentMeta.name = "agent";
+            agentMeta.name = AgentName;
             agentMeta.position = transform.position;
             agentMeta.rotation = transform.eulerAngles;
 
