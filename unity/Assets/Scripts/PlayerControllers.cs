@@ -12,7 +12,7 @@ namespace UnityStandardAssets.Characters.FirstPerson {
         DISCRETE_POINT_CLICK,
         DISCRETE_HIDE_N_SEEK,
         MINIMAL_FPS,
-        USER_STUDY
+        HRI
     }
 
     class PlayerControllers {
@@ -26,7 +26,7 @@ namespace UnityStandardAssets.Characters.FirstPerson {
             { ControlMode.DISCRETE_POINT_CLICK, typeof(DiscretePointClickAgentController) },
             { ControlMode.DISCRETE_HIDE_N_SEEK, typeof(DiscreteHidenSeekgentController) },
             { ControlMode.MINIMAL_FPS, typeof(MinimalFPSController) },
-            { ControlMode.USER_STUDY, typeof(UserStudyAgentController) }
+            { ControlMode.HRI, typeof(HRIAgentController) }
         };
     }
 }

@@ -10,7 +10,17 @@ window.onUnityMetadata = (data) => {
 window.onGameLoaded = () => {
     console.log('Game Loaded!')
     // Set controller to enable interaction
-    window.Unity?.SendMessage('FPSController', 'SetController', 'USER_STUDY')
+    window.Unity?.SendMessage('FPSController', 'SetController', 'HRI')
+
+    window.Unity?.SendMessage(
+        'FPSController',
+        'Step',
+        JSON.stringify({
+            action: 'Initialize',
+            gridSize: 0.25,
+            agentCount: 2,
+        }),
+    )
 }
 
 onMounted(() => {
@@ -60,20 +70,16 @@ const testFunctions = {
         )
     },
 
-    添加第三人称相机: () => {
+    机器人左转: () => {
         window.Unity?.SendMessage(
             'FPSController',
             'Step',
             JSON.stringify({
-                action: 'AddThirdPartyCamera',
-                position: { x: 0, y: 0, z: 0 },
-                rotation: { x: 0, y: 0, z: 0 },
+                action: 'RotateLeft',
+                degrees: 30,
+                agentId: 1,
             }),
         )
-    },
-
-    多Agent初始化: () => {
-        window.Unity?.SendMessage('FPSController', 'SpawnAgent', 0)
     },
 }
 </script>
