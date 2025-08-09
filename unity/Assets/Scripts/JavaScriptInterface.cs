@@ -30,7 +30,11 @@ public class JavaScriptInterface : MonoBehaviour {
         this.agentManager = GameObject
             .Find("PhysicsSceneManager")
             .GetComponentInChildren<AgentManager>();
-        this.agentManager.SetUpPhysicsController();
+
+        // Only call SetUpPhysicsController() in single agent settings.
+        if (this.agentManager.agents.Count <= 1) {
+            this.agentManager.SetUpPhysicsController();
+        }
 
         // inputField = GameObject.Find("DebugCanvasPhysics").GetComponentInChildren<DebugInputField>();// FindObjectOfType<DebugInputField>();
         // GameObject.Find("DebugCanvas").GetComponentInChildren<AgentManager>();
