@@ -14,7 +14,7 @@ import { ArcoResolver } from 'unplugin-vue-components/resolvers'
 import { vitePluginForArco } from '@arco-plugins/vite-vue'
 
 // This will be where the template is built to!
-const buildDirectory = path.resolve(__dirname, '../unity/Assets/WebGLTemplates/UserStudy')
+const buildDirectory = path.resolve(__dirname, '../unity/Assets/WebGLTemplates/HRI')
 const unityBuildFolder = path.join(buildDirectory, 'Build')
 
 // Custom plugin to delete the folder
