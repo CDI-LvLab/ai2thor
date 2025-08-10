@@ -1441,8 +1441,7 @@ public class AgentManager : MonoBehaviour, ActionInvokable {
 
             // we don't need to render the agent's camera for the first agent
 
-            if (shouldRender) {
-                if (i == activeAgentId) continue;
+            if (shouldRender && agent.AgentName != "human") {
                 addImage(renderPayload, agent);
                 if (shouldRenderImageSynthesis) {
                     addImageSynthesisImage(
