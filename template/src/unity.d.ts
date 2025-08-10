@@ -7,7 +7,7 @@ declare global {
     interface Window {
         Unity: Unity | null
         ai2thor: {
-            metadata: object
+            metadata: string
             images: { [id: string]: Uint8Array }
         }
         createUnityInstance: (

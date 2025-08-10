@@ -8,6 +8,8 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    ServerStatus: typeof import('./src/components/ServerStatus.vue')['default']
     TaskInstructions: typeof import('./src/components/TaskInstructions.vue')['default']
+    WebSocket: typeof import('./src/components/WebSocket.vue')['default']
   }
 }

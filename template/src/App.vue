@@ -1,96 +1,71 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
+import { useUrlSearchParams, useWebSocket } from '@vueuse/core'
 
 import TaskInstructions from './components/TaskInstructions.vue'
 
-window.onUnityMetadata = (data: string) => {
-    window.ai2thor.metadata = JSON.parse(data)
-}
+import { setupUnity, initializeAi2Thor, command } from './utils/ai2thor'
+import { sendAi2ThorPacked } from '@/utils/data'
+import ServerStatus from './components/ServerStatus.vue'
 
-window.onUnityImage = (key: string, image: Uint8Array) => {
-    window.ai2thor.images[key] = image
-}
-
-window.onGameLoaded = () => {
-    console.log('Game Loaded!')
-    // Set controller to enable interaction
-    window.Unity?.SendMessage('FPSController', 'SetController', 'HRI')
-
-    window.Unity?.SendMessage(
-        'FPSController',
-        'Step',
-        JSON.stringify({
-            action: 'Initialize',
-            gridSize: 0.25,
-            agentCount: 2,
-            fieldOfView: 65,
-        }),
-    )
-}
-
-onMounted(() => {
-    if (!window.createUnityInstance) {
-        console.error(
-            "Can't find createUnityInstance(). Is /Build/Unity.loader.js correctly loaded?",
-        )
-        return
-    }
-    const canvas: HTMLCanvasElement | null = document.querySelector('#unity-canvas')
-    if (!canvas) {
-        console.error('Could not get the canvas element for Unity (#unity-canvas)')
-        return
-    }
-    window
-        .createUnityInstance(canvas, {
-            dataUrl: `Build/Unity.data`,
-            frameworkUrl: 'Build/Unity.framework.js',
-            codeUrl: 'Build/Unity.wasm',
-            streamingAssetsUrl: 'StreamingAssets',
-            companyName: 'CDI',
-            productName: 'AI2THOR',
-            productVersion: '1.0',
-        })
-        .then(async (unityInstance: Unity) => {
-            console.log('Unity loaded!', unityInstance)
-            window.Unity = unityInstance
-            window.ai2thor = {
-                metadata: {},
-                images: {},
-            }
-        })
-        .catch((message) => {
-            console.error('Failed to load Unity:', message)
-        })
+const { status, send } = useWebSocket('ws://localhost:8000/api/ws', {
+    autoReconnect: true,
+    heartbeat: {
+        message: 'ping',
+        interval: 2000,
+        pongTimeout: 3000,
+    },
 })
 
+// Initialize Unity
+onMounted(setupUnity)
+window.onGameLoaded = initializeAi2Thor
+// Handle metadata sent from Unity
+window.onUnityMetadata = async (data: string) => {
+    window.ai2thor.metadata = data
+    await sendAi2ThorPacked(send, window.ai2thor)
+}
+window.onUnityImage = (key: string, image: Uint8Array) => {
+    window.ai2thor.images[key] = image
+    // We don't need to send anything here. Images messages are always concluded by a metadata message.
+}
+
+const params = useUrlSearchParams('hash-params')
+if (!params.experiment) params.experiment = 'demo'
+console.log(params)
+
+// Some functions to trigger with buttons.
 const testFunctions = {
     最新数据: () => {
         console.log(window.ai2thor)
     },
 
     左转: () => {
-        window.Unity?.SendMessage(
-            'FPSController',
-            'Step',
-            JSON.stringify({
-                action: 'RotateLeft',
-                degrees: 30,
-            }),
-        )
+        command('RotateLeft', { degrees: 30 })
     },
 
     机器人左转: () => {
-        window.Unity?.SendMessage(
-            'FPSController',
-            'Step',
-            JSON.stringify({
-                action: 'RotateLeft',
-                degrees: 30,
-                agentId: 1,
-            }),
-        )
+        command('RotateLeft', {
+            degrees: 30,
+            agentId: 1,
+        })
     },
 }
+
+import { useDevicesList, useUserMedia } from '@vueuse/core'
+import { computed, reactive } from 'vue'
+
+const { audioInputs: microphones } = useDevicesList({
+    requestPermissions: true,
+})
+const currentMicrophone = computed(() => microphones.value[0]?.deviceId)
+
+const { stream } = useUserMedia({
+    constraints: reactive({
+        audio: { deviceId: currentMicrophone },
+    }),
+})
+console.log(stream)
 </script>
 
 <template>
@@ -107,6 +82,8 @@ const testFunctions = {
                     </a-avatar>
                     <strong>CDI-AI2THOR</strong>
                 </a-space>
+                <ServerStatus :status="status" />
+
                 <a-button
                     v-for="(action, name) in testFunctions"
                     :key="name"
