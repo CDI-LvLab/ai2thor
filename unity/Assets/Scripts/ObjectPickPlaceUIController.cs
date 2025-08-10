@@ -134,12 +134,24 @@ namespace UnityStandardAssets.Characters.FirstPerson {
                                 : "OpenObject";
                         }
 
-                        if (actionName != "") {
-                            Dictionary<string, object> action = new Dictionary<string, object>();
-                            action["action"] = actionName;
-                            action["objectId"] = closestObj.objectID;
-                            this.PhysicsController.ProcessControlCommand(action);
-                        }
+                        // if (actionName != "") {
+                        //     Dictionary<string, object> action = new Dictionary<string, object>();
+                        //     action["action"] = actionName;
+                        //     action["objectId"] = closestObj.objectID;
+                        //     this.PhysicsController.ProcessControlCommand(action);
+
+                        //     if (actionName == "PickupObject") {
+                        //         // Move the object to the side.
+                        //         // Looks like it's in the right hand.
+                        //         Dictionary<string, object> handMoveAction = new Dictionary<string, object>();
+                        //         handMoveAction["action"] = "MoveHandForce";
+                        //         handMoveAction["x"] = -0.2;
+                        //         handMoveAction["y"] = -0.2;
+                        //         handMoveAction["z"] = 0;
+
+                        //         this.PhysicsController.ProcessControlCommand(handMoveAction);
+                        //     }
+                        // }
                     }
                 } else if (
                     this.PhysicsController.WhatAmIHolding() == this.pickedUpObject.gameObject

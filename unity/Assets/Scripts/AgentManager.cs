@@ -101,6 +101,8 @@ public class AgentManager : MonoBehaviour, ActionInvokable {
     public const float MIN_FOV = 0;
     public string agentMode;
 
+    public bool onlyEmitOnAction = false;
+
     public Bounds sceneBounds = UtilityFunctions.CreateEmptyBounds();
     public Bounds SceneBounds {
         get {
@@ -407,6 +409,10 @@ public class AgentManager : MonoBehaviour, ActionInvokable {
     // note: this doesn't take a ServerAction because we don't have to force the snpToGrid bool
     // to be false like in other controller types.
     public void SetUpPhysicsController() {
+        if (this.agents.Count > 1) {
+            Debug.LogWarning("SetUpPhysicsController() should not be called in multi-agent settings.");
+            return;  
+        }
         this.agents.Clear();
         BaseAgentComponent baseAgentComponent = GameObject.FindObjectOfType<BaseAgentComponent>();
         primaryAgent = createAgentType(typeof(PhysicsRemoteFPSAgentController), baseAgentComponent);
@@ -1098,7 +1104,14 @@ public class AgentManager : MonoBehaviour, ActionInvokable {
         Camera camera
     ) {
         RenderTexture tt = camera.targetTexture;
-        RenderTexture.active = tt;
+        if (tt == null) {
+            Debug.LogWarning("camera.targetTexture is null. Creating one.");
+            // Temporary fix for too large a texture cause framerate drop. 
+            // [TODO] Maybe don't hard-code the resolution?
+            tt = createRenderTexture(1280, 720);
+            camera.targetTexture = tt;
+        }
+        // RenderTexture.active = tt;
         camera.Render();
         AsyncGPUReadback.Request(
             tt,
@@ -1145,10 +1158,10 @@ public class AgentManager : MonoBehaviour, ActionInvokable {
             captureScreenAsync(payload, "image", agent.m_Camera);
 #else
             // XXX may not need this since we call render in captureScreenAsync
-            if (this.agents.Count > 1 || this.thirdPartyCameras.Count > 0) {
-                RenderTexture.active = agent.m_Camera.activeTexture;
-                agent.m_Camera.Render();
-            }
+            // if (this.agents.Count > 1 || this.thirdPartyCameras.Count > 0) {
+            //     RenderTexture.active = agent.m_Camera.activeTexture;
+            //     agent.m_Camera.Render();
+            // }
             payload.Add(new KeyValuePair<string, byte[]>("image", captureScreen()));
 #endif
         }
@@ -1429,6 +1442,7 @@ public class AgentManager : MonoBehaviour, ActionInvokable {
             // we don't need to render the agent's camera for the first agent
 
             if (shouldRender) {
+                if (i == activeAgentId) continue;
                 addImage(renderPayload, agent);
                 if (shouldRenderImageSynthesis) {
                     addImageSynthesisImage(
@@ -1518,6 +1532,11 @@ public class AgentManager : MonoBehaviour, ActionInvokable {
     public IEnumerator EmitFrame() {
         while (true) {
             bool shouldRender = this.renderImage && serverSideScreenshot;
+#if UNITY_WEBGL
+            if (this.agents.Count > 1) {
+                shouldRender = this.renderImage;
+            }
+#endif
 
             bool shouldRenderImageSynthesis = shouldRender && this.renderImageSynthesis;
             if (renderImageSynthesisChanged) {
@@ -1543,6 +1562,7 @@ public class AgentManager : MonoBehaviour, ActionInvokable {
             foreach (BaseFPSAgentController agent in this.agents) {
                 if (agent.agentState == AgentState.ActionComplete) {
                     agent.agentState = AgentState.Emit;
+                    if (onlyEmitOnAction) this.agentManagerState = AgentState.Emit;
                 }
             }
 
@@ -1563,10 +1583,27 @@ public class AgentManager : MonoBehaviour, ActionInvokable {
                 shouldRender,
                 shouldRenderImageSynthesis
             );
+
+            
 #if UNITY_WEBGL
             JavaScriptInterface jsInterface = this.primaryAgent.GetComponent<JavaScriptInterface>();
-            if (jsInterface != null)
-            {
+            if (jsInterface != null) {
+                AsyncGPUReadback.WaitAllRequests();
+                Debug.LogWarning("renderPayload size: " + renderPayload.Count);
+                foreach (var item in renderPayload) {
+                    if (item.Value != null && item.Value.Length > 0) {
+                        var resized = ImageUtils.ResizeRGBImage(
+                            item.Value,
+                            Screen.width,
+                            Screen.height,
+                            720,
+                            720
+                        );
+                        Debug.Log("Sending '" + item.Key + "': " + resized.Length + " bytes.");
+                        // [TODO] Avoid hard coding the output resolution
+                        jsInterface.SendActionImage(item.Key, resized);
+                    }
+                }
                 jsInterface.SendActionMetadata(serializeMetadataJson(multiMeta));
             }
 #endif
@@ -1760,6 +1797,10 @@ public class AgentManager : MonoBehaviour, ActionInvokable {
             //}
 
 #endif
+            if (onlyEmitOnAction) {
+                Debug.LogWarning("Emit finished. Setting state to Emitted until next action.");
+                this.agentManagerState = AgentState.Emitted;
+            }
         }
     }
 
@@ -1776,6 +1817,8 @@ public class AgentManager : MonoBehaviour, ActionInvokable {
         this.renderImageSynthesis = controlCommand.renderImageSynthesis;
 
         this.activeAgentId = controlCommand.agentId;
+
+        this.onlyEmitOnAction = controlCommand.onlyEmitOnAction;
 
         if (
             agentManagerState == AgentState.Error
@@ -1889,6 +1932,7 @@ public class MultiAgentMetadata {
     public ThirdPartyCameraMetadata[] thirdPartyCameras;
     public int activeAgentId;
     public int sequenceId;
+    public string image;
 }
 
 [Serializable]
@@ -2398,6 +2442,7 @@ public class DynamicServerAction {
             "renderClassImage",
             "renderNormalsImage",
             "renderInstanceSegmentation",
+            "onlyEmitOnAction",
             "action",
             physicsSimulationParamsVariable
         };
@@ -2413,6 +2458,10 @@ public class DynamicServerAction {
 
     public int sequenceId {
         get { return (int)this.GetValue("sequenceId", 0); }
+    }
+
+    public bool onlyEmitOnAction {
+        get { return (bool)this.GetValue("onlyEmitOnAction", false); }
     }
 
     public string action {
@@ -2937,5 +2986,6 @@ public enum AgentState {
     ActionComplete,
     PendingFixedUpdate,
     Emit,
+    Emitted,
     Error
 }

@@ -3,8 +3,12 @@ import { onMounted } from 'vue'
 
 import TaskInstructions from './components/TaskInstructions.vue'
 
-window.onUnityMetadata = (data) => {
-    window.lastEvent = data
+window.onUnityMetadata = (data: string) => {
+    window.ai2thor.metadata = JSON.parse(data)
+}
+
+window.onUnityImage = (key: string, image: Uint8Array) => {
+    window.ai2thor.images[key] = image
 }
 
 window.onGameLoaded = () => {
@@ -19,6 +23,7 @@ window.onGameLoaded = () => {
             action: 'Initialize',
             gridSize: 0.25,
             agentCount: 2,
+            fieldOfView: 65,
         }),
     )
 }
@@ -48,6 +53,10 @@ onMounted(() => {
         .then(async (unityInstance: Unity) => {
             console.log('Unity loaded!', unityInstance)
             window.Unity = unityInstance
+            window.ai2thor = {
+                metadata: {},
+                images: {},
+            }
         })
         .catch((message) => {
             console.error('Failed to load Unity:', message)
@@ -55,8 +64,8 @@ onMounted(() => {
 })
 
 const testFunctions = {
-    LastEvent: () => {
-        console.log(window.lastEvent)
+    最新数据: () => {
+        console.log(window.ai2thor)
     },
 
     左转: () => {

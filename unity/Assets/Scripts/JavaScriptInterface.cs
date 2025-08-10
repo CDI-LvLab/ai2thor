@@ -17,12 +17,31 @@ public class JavaScriptInterface : MonoBehaviour {
     [DllImport("__Internal")]
     private static extern void SendMetadata(string str);
 
+    [DllImport("__Internal")]
+    private static extern void SendImage(string key, byte[] pointer, int length);
+
     /*
         metadata: serialized metadata, commonly an instance of MultiAgentMetadata
      */
     public void SendActionMetadata(string metadata)
     {
-        SendMetadata(metadata);
+        try {
+            SendMetadata(metadata);
+        } catch {
+            Debug.LogWarning("SendMetadata() not present. Probably because we're in Unity Editor.");
+        } 
+    }
+
+    /*
+        image: a series of bytes.
+    */
+    public void SendActionImage(string key, byte[] image)
+    {
+        try {
+            SendImage(key, image, image.Length);
+        } catch {
+            Debug.LogWarning("SendImage() not present. Probably because we're in Unity Editor.");
+        } 
     }
 
     void Start()
@@ -30,15 +49,15 @@ public class JavaScriptInterface : MonoBehaviour {
         this.agentManager = GameObject
             .Find("PhysicsSceneManager")
             .GetComponentInChildren<AgentManager>();
-
-        // Only call SetUpPhysicsController() in single agent settings.
-        if (this.agentManager.agents.Count <= 1) {
-            this.agentManager.SetUpPhysicsController();
-        }
+        this.agentManager.SetUpPhysicsController();
 
         // inputField = GameObject.Find("DebugCanvasPhysics").GetComponentInChildren<DebugInputField>();// FindObjectOfType<DebugInputField>();
         // GameObject.Find("DebugCanvas").GetComponentInChildren<AgentManager>();
-        Init();
+        try {
+            Init();
+        } catch {
+            Debug.LogWarning("Init() not present. Probably because we're in Unity Editor.");
+        }
 
         Debug.Log("Calling store data");
     }

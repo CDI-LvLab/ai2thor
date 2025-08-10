@@ -6,13 +6,17 @@ declare global {
     }
     interface Window {
         Unity: Unity | null
-        lastEvent: object
+        ai2thor: {
+            metadata: object
+            images: { [id: string]: Uint8Array }
+        }
         createUnityInstance: (
             canvas: HTMLCanvasElement,
             config: object | null,
             onProgress?: (progress: number) => void,
         ) => Promise<Unity>
-        onUnityMetadata: (data: object) => void
+        onUnityImage: (key: string, image: Uint8Array) => void
+        onUnityMetadata: (data: string) => void
         onGameLoaded: () => void
     }
 }
