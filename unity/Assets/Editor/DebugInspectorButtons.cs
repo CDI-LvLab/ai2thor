@@ -19,5 +19,19 @@ public class MyScriptEditor : Editor
         {
             script.EnableHRIMode();
         }
+
+        if (GUILayout.Button("Robot Rotate Left"))
+        {
+            Debug.Log("Running Robot Rotate Left to test why robot status is not changed to ActionComplete...");
+            var jsInterface = GameObject.Find("FPSController").GetComponent<JavaScriptInterface>();
+            string json = @"{
+                ""action"": ""RotateLeft"",
+                ""degrees"": 30,
+                ""agentId"": 1,
+                ""renderImage"": true,
+                ""onlyEmitOnAction"": true
+            }";
+            jsInterface.Step(json);
+        }
     }
 }

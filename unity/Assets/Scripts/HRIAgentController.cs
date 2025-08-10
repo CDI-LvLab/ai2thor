@@ -66,6 +66,8 @@ namespace UnityStandardAssets.Characters.FirstPerson {
         private void executeAction(string actionName, string argName, float value) {
             Dictionary<string, object> action = new Dictionary<string, object>();
             action["action"] = actionName;
+            action["renderImage"] = true;
+            action["onlyEmitOnAction"] = true;
             action[argName] = value;
             PhysicsController.ProcessControlCommand(action);
         }
@@ -73,6 +75,8 @@ namespace UnityStandardAssets.Characters.FirstPerson {
         private void executeAction(string actionName) {
             Dictionary<string, object> action = new Dictionary<string, object>();
             action["action"] = actionName;
+            action["renderImage"] = true;
+            action["onlyEmitOnAction"] = true;
             PhysicsController.ProcessControlCommand(action);
         }
 
