@@ -89,12 +89,15 @@ public class HumanRobotInteractionManager : MonoBehaviour {
         var jsInterface = GameObject.Find("FPSController").GetComponent<JavaScriptInterface>();
         var manager = GameObject.Find("PhysicsSceneManager").GetComponent<AgentManager>();
         jsInterface.SetController("HRI");
+        manager.onlyEmitOnAction = true;
 
         string json = @"{
             ""action"": ""Initialize"",
             ""gridSize"": 0.25,
             ""agentCount"": 2,
-            ""renderImage"": true
+            ""renderImage"": true,
+            ""onlyEmitOnAction"": true,
+            ""fieldOfView"": 65
         }";
         jsInterface.Step(json);
 
