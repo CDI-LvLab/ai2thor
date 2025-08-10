@@ -1591,16 +1591,18 @@ public class AgentManager : MonoBehaviour, ActionInvokable {
                 Debug.LogWarning("renderPayload size: " + renderPayload.Count);
                 foreach (var item in renderPayload) {
                     if (item.Value != null && item.Value.Length > 0) {
-                        var resized = ImageUtils.ResizeRGBImage(
-                            item.Value,
-                            Screen.width,
-                            Screen.height,
-                            720,
-                            720
-                        );
-                        Debug.Log("Sending '" + item.Key + "': " + resized.Length + " bytes.");
+                        // var resized = ImageUtils.ResizeRGBImage(
+                        //     item.Value,
+                        //     Screen.width,
+                        //     Screen.height,
+                        //     720,
+                        //     720
+                        // );
+                        // Debug.Log("Sending '" + item.Key + "': " + resized.Length + " bytes.");
                         // [TODO] Avoid hard coding the output resolution
-                        jsInterface.SendActionImage(item.Key, resized);
+                        // jsInterface.SendActionImage(item.Key, resized);
+
+                        jsInterface.SendActionImage(item.Key, item.Value);
                     }
                 }
                 jsInterface.SendActionMetadata(serializeMetadataJson(multiMeta));
