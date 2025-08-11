@@ -1103,6 +1103,8 @@ public class AgentManager : MonoBehaviour, ActionInvokable {
         string key,
         Camera camera
     ) {
+
+        Debug.Log("captureSceenAsync");
         RenderTexture tt = camera.targetTexture;
         if (tt == null) {
             Debug.LogWarning("camera.targetTexture is null. Creating one.");
@@ -1125,6 +1127,43 @@ public class AgentManager : MonoBehaviour, ActionInvokable {
                 }
             }
         );
+    }
+
+    private byte[] captureCamera(Camera cam) {
+        // Create a temporary RenderTexture at the size you want
+        RenderTexture rt = RenderTexture.GetTemporary(
+            UnityEngine.Screen.width,
+            UnityEngine.Screen.height,
+            24,
+            RenderTextureFormat.ARGB32
+        );
+
+        // Render the camera into the offscreen RT
+        cam.targetTexture = rt;
+        cam.Render();
+
+        // Activate RT and read pixels from it
+        RenderTexture.active = rt;
+
+        if (tex.height != UnityEngine.Screen.height || tex.width != UnityEngine.Screen.width) {
+            tex = new Texture2D(
+                UnityEngine.Screen.width,
+                UnityEngine.Screen.height,
+                TextureFormat.RGB24,
+                false
+            );
+            readPixelsRect = new Rect(0, 0, UnityEngine.Screen.width, UnityEngine.Screen.height);
+        }
+
+        tex.ReadPixels(readPixelsRect, 0, 0);
+        tex.Apply();
+
+        // Cleanup
+        cam.targetTexture = null;
+        RenderTexture.active = null;
+        RenderTexture.ReleaseTemporary(rt);
+
+        return tex.GetRawTextureData();
     }
 
     private byte[] captureScreen() {
@@ -1157,12 +1196,16 @@ public class AgentManager : MonoBehaviour, ActionInvokable {
 #if PLATFORM_CLOUD_RENDERING
             captureScreenAsync(payload, "image", agent.m_Camera);
 #else
-            // XXX may not need this since we call render in captureScreenAsync
-            // if (this.agents.Count > 1 || this.thirdPartyCameras.Count > 0) {
-            //     RenderTexture.active = agent.m_Camera.activeTexture;
-            //     agent.m_Camera.Render();
-            // }
-            payload.Add(new KeyValuePair<string, byte[]>("image", captureScreen()));
+            if (this.agents.Count > 1) {
+                payload.Add(new KeyValuePair<string, byte[]>("image", captureCamera(agent.m_Camera)));
+            } else {
+                // XXX may not need this since we call render in captureScreenAsync
+                if (this.thirdPartyCameras.Count > 0) {
+                    RenderTexture.active = agent.m_Camera.activeTexture;
+                    agent.m_Camera.Render();
+                }
+                payload.Add(new KeyValuePair<string, byte[]>("image", captureScreen()));
+            }
 #endif
         }
     }
@@ -1561,7 +1604,9 @@ public class AgentManager : MonoBehaviour, ActionInvokable {
             foreach (BaseFPSAgentController agent in this.agents) {
                 if (agent.agentState == AgentState.ActionComplete) {
                     agent.agentState = AgentState.Emit;
-                    if (onlyEmitOnAction) this.agentManagerState = AgentState.Emit;
+                    if (onlyEmitOnAction) {
+                        this.agentManagerState = AgentState.Emit;
+                    }
                 }
             }
 
@@ -1587,7 +1632,7 @@ public class AgentManager : MonoBehaviour, ActionInvokable {
 #if UNITY_WEBGL
             JavaScriptInterface jsInterface = this.primaryAgent.GetComponent<JavaScriptInterface>();
             if (jsInterface != null) {
-                AsyncGPUReadback.WaitAllRequests();
+                // AsyncGPUReadback.WaitAllRequests();
                 Debug.LogWarning("renderPayload size: " + renderPayload.Count);
                 foreach (var item in renderPayload) {
                     if (item.Value != null && item.Value.Length > 0) {
@@ -1933,7 +1978,6 @@ public class MultiAgentMetadata {
     public ThirdPartyCameraMetadata[] thirdPartyCameras;
     public int activeAgentId;
     public int sequenceId;
-    public string image;
 }
 
 [Serializable]

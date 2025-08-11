@@ -45990,6 +45990,11 @@ PrefabInstance:
       objectReference: {fileID: 114739950834541479}
     - target: {fileID: 114125549759153004, guid: 3a963756b61df410c91df72a73d4efde,
         type: 3}
+      propertyPath: debugImage
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 114125549759153004, guid: 3a963756b61df410c91df72a73d4efde,
+        type: 3}
       propertyPath: thirdPartyCameras.Array.size
       value: 0
       objectReference: {fileID: 0}
@@ -52110,6 +52115,11 @@ PrefabInstance:
         type: 3}
       propertyPath: m_FirstSelected
       value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 223308257085396402, guid: 5b3a2f458d83e4af9a41ecf71b1f80f8,
+        type: 3}
+      propertyPath: m_Enabled
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 224778784152956280, guid: 5b3a2f458d83e4af9a41ecf71b1f80f8,
         type: 3}
