@@ -1163,7 +1163,7 @@ public class AgentManager : MonoBehaviour, ActionInvokable {
         RenderTexture.active = null;
         RenderTexture.ReleaseTemporary(rt);
 
-        return tex.GetRawTextureData();
+        return tex.EncodeToPNG();
     }
 
     private byte[] captureScreen() {
