@@ -1,10 +1,11 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 using UnityStandardAssets.Characters.FirstPerson; // For the BaseFPSAgentController namespace
 
 public class HumanRobotInteractionManager : MonoBehaviour {
-
+#if UNITY_WEBGL
     private bool initialized = false;
     private bool shown = false;
 
@@ -103,4 +104,5 @@ public class HumanRobotInteractionManager : MonoBehaviour {
 
         Debug.Log("Agents count: " + manager.agents.Count);
     }
+#endif
 }
