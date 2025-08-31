@@ -200,8 +200,7 @@ public class AgentManager : MonoBehaviour, ActionInvokable {
         physicsSceneManager.UnpausePhysicsAutoSim();
         primaryAgent.InitializeBody(null);
         JavaScriptInterface jsInterface = primaryAgent.GetComponent<JavaScriptInterface>();
-        if (jsInterface != null)
-        {
+        if (jsInterface != null) {
             jsInterface.enabled = true;
         }
 #endif
@@ -411,7 +410,7 @@ public class AgentManager : MonoBehaviour, ActionInvokable {
     public void SetUpPhysicsController() {
         if (this.agents.Count > 1) {
             Debug.LogWarning("SetUpPhysicsController() should not be called in multi-agent settings.");
-            return;  
+            return;
         }
         this.agents.Clear();
         BaseAgentComponent baseAgentComponent = GameObject.FindObjectOfType<BaseAgentComponent>();
@@ -842,7 +841,7 @@ public class AgentManager : MonoBehaviour, ActionInvokable {
 
         List<SyncTransform> st = UtilityFunctions.FindAllComponentsInChildren<SyncTransform>(agent.transform);
 
-        if(st.Count > 0) {
+        if (st.Count > 0) {
             foreach (SyncTransform s in st) {
                 s.enabled = !toggleOff;
             }
@@ -852,7 +851,7 @@ public class AgentManager : MonoBehaviour, ActionInvokable {
             );
         }
 
-        agent.actionFinishedEmit(success:true);
+        agent.actionFinishedEmit(success: true);
     }
 
     //allows repositioning and changing of values of agent's primary camera
@@ -1129,7 +1128,17 @@ public class AgentManager : MonoBehaviour, ActionInvokable {
         );
     }
 
-    private byte[] captureCamera(Camera cam) {
+    private byte[] captureCamera(Camera cam, int maxSize = 1280, int quality = 75) {
+        int screenW = UnityEngine.Screen.width;
+        int screenH = UnityEngine.Screen.height;
+
+        // scale down while preserving aspect ratio BEFORE rendering
+        if (screenW > maxSize || screenH > maxSize) {
+            float scale = Mathf.Min((float)maxSize / screenW, (float)maxSize / screenH);
+            screenW = Mathf.RoundToInt(screenW * scale);
+            screenH = Mathf.RoundToInt(screenH * scale);
+        }
+
         // Create a temporary RenderTexture at the size you want
         RenderTexture rt = RenderTexture.GetTemporary(
             UnityEngine.Screen.width,
@@ -1163,7 +1172,7 @@ public class AgentManager : MonoBehaviour, ActionInvokable {
         RenderTexture.active = null;
         RenderTexture.ReleaseTemporary(rt);
 
-        return tex.EncodeToPNG();
+        return tex.EncodeToJPG(quality);
     }
 
     private byte[] captureScreen() {
@@ -1628,7 +1637,7 @@ public class AgentManager : MonoBehaviour, ActionInvokable {
                 shouldRenderImageSynthesis
             );
 
-            
+
 #if UNITY_WEBGL
             JavaScriptInterface jsInterface = this.primaryAgent.GetComponent<JavaScriptInterface>();
             if (jsInterface != null) {
