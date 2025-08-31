@@ -1,19 +1,27 @@
-using System.Collections;
+using System;
+using System.Runtime.InteropServices;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
-using UnityEngine.UI;
 
 namespace UnityStandardAssets.Characters.FirstPerson {
     public class HRIAgentController : MonoBehaviour {
         [SerializeField]
         private float HandMoveMagnitude = 0.1f;
+        public float ReachableDistance = 5.0f;
         public PhysicsRemoteFPSAgentController PhysicsController = null;
-        private GameObject InputMode_Text = null;
-        private GameObject throwForceBar = null;
         private bool handMode = false;
         private Camera m_Camera;
 
+        [DllImport("__Internal")]
+        private static extern void SetCursorStyle(string style);
+
         void Start() {
+#if !UNITY_EDITOR && UNITY_WEBGL
+            // disable WebGLInput.captureAllKeyboardInput so elements in web page can handle keyboard inputs
+            WebGLInput.captureAllKeyboardInput = false;
+#endif
+
             var Debug_Canvas = GameObject.Find("DebugCanvasPhysics");
             AgentManager agentManager = GameObject
                 .Find("PhysicsSceneManager")
@@ -24,64 +32,68 @@ namespace UnityStandardAssets.Characters.FirstPerson {
                 agentManager.agents.Clear();
                 agentManager.SetUpPhysicsController();
             }
-            
+
             PhysicsController = agentManager.PrimaryAgent as PhysicsRemoteFPSAgentController;
 
             Cursor.visible = true;
             Cursor.lockState = CursorLockMode.None;
             Debug_Canvas.GetComponent<Canvas>().enabled = true;
 
-            highlightController = new ObjectPickPlaceUIController(
-                PhysicsController,
-                PhysicsController.maxVisibleDistance,
-                true,
-                false
-            );
-            
             m_Camera = Camera.main;
         }
 
+
         public void OnEnable() {
-            InputMode_Text = GameObject.Find("DebugCanvasPhysics/InputModeText");
-            throwForceBar = GameObject.Find("DebugCanvasPhysics/ThrowForceBar");
-            if (InputMode_Text) {
-                InputMode_Text.GetComponent<Text>().text = "Point and Click Mode";
-            }
-            if (throwForceBar) {
-                throwForceBar.SetActive(false);
-            }
-            // InputFieldObj = GameObject.Find("DebugCanvasPhysics/InputField");
-            // TODO: move debug input field script from, Input Field and disable here
+            disableUIElements();
         }
 
         public void OnDisable() {
-            if (throwForceBar) {
-                throwForceBar.SetActive(true);
-            }
-            // TODO: move debug input field script from, Input Field and enable here
-        }
-
-
-        private void executeAction(string actionName, string argName, float value) {
-            Dictionary<string, object> action = new Dictionary<string, object>();
-            action["action"] = actionName;
-            action["renderImage"] = true;
-            action["onlyEmitOnAction"] = true;
-            action[argName] = value;
-            PhysicsController.ProcessControlCommand(action);
-        }
-
-        private void executeAction(string actionName) {
-            Dictionary<string, object> action = new Dictionary<string, object>();
-            action["action"] = actionName;
-            action["renderImage"] = true;
-            action["onlyEmitOnAction"] = true;
-            PhysicsController.ProcessControlCommand(action);
+            enableUIElements();
         }
 
         void Update() {
-            highlightController.UpdateHighlightedObject(Input.mousePosition);
-            highlightController.MouseControls(Input.mousePosition);            
+            SimObjPhysics highlighted = null;
+            HighlightUtility.Clear();
+
+            GameObject holding = PhysicsController.WhatAmIHolding();
+
+            // If we're holding an object, only allow interacting with Receptacles.
+            highlighted = GetSymObjUnderMouse(
+                holding ? new SimObjPrimaryProperty[] { } : new SimObjPrimaryProperty[] { SimObjPrimaryProperty.CanPickup },
+                holding ? new SimObjSecondaryProperty[] { SimObjSecondaryProperty.Receptacle } : new SimObjSecondaryProperty[] { }
+            );
+            if (highlighted) {
+                HighlightUtility.Highlight(highlighted.gameObject);
+#if !UNITY_EDITOR && UNITY_WEBGL
+                SetCursorStyle("pointer");
+#endif
+                if (Input.GetMouseButtonDown(0)) {
+                    if (!holding && highlighted.PrimaryProperty == SimObjPrimaryProperty.CanPickup) {
+                        // We can only pick up an object if not holding another one.
+                        PickupObject(highlighted);
+                    } else if (highlighted.SecondaryProperties.Contains(SimObjSecondaryProperty.Receptacle)) {
+                        // Otherwise, we're looking for somewhere to put the object.
+                        if (highlighted.SecondaryProperties.Contains(SimObjSecondaryProperty.CanOpen)) {
+                            // If the receptacle can be opened, toggle it to ensure that it is open before putting the object in.
+                            if (holding && highlighted.GetComponent<CanOpen_Object>().isOpen) {
+                                // If already open, then directly put in.
+                                PutdownObject(highlighted);
+                            } else {
+                                // Otherwise toggle open/close receptacle
+                                ToggleReceptacle(highlighted);
+                            }
+                        } else if (holding) {
+                            // Otherwise, the highlighted thing is a receptacle that is always open, like a pan or a bowl.
+                            // In a holding state, we treat pickup-able receptacles as receptacles first.
+                            PutdownObject(highlighted);
+                        }
+                    }
+                }
+            } else {
+#if !UNITY_EDITOR && UNITY_WEBGL
+                SetCursorStyle("default");
+#endif
+            }
 
             if (PhysicsController.ReadyForCommand) {
                 float WalkMagnitude = 0.25f;
@@ -118,40 +130,127 @@ namespace UnityStandardAssets.Characters.FirstPerson {
                         executeAction("RotateRight", "degrees", 30f);
                     }
                 }
+            }
+        }
 
-                if (Input.GetKeyDown(KeyCode.LeftShift)) {
-                    handMode = true;
-                } else if (Input.GetKeyUp(KeyCode.LeftShift)) {
-                    handMode = false;
+        private void ToggleReceptacle(SimObjPhysics receptacle) {
+            Debug.Log("Toggling Receptacle");
+            Dictionary<string, object> action = new Dictionary<string, object>();
+            action["action"] = receptacle.GetComponent<CanOpen_Object>().isOpen
+                ? "CloseObject"
+                : "OpenObject";
+            action["objectId"] = receptacle.objectID;
+            action["forceAction"] = true;
+            this.PhysicsController.ProcessControlCommand(action);
+        }
+
+        private void PickupObject(SimObjPhysics simObject) {
+            Debug.Log("Picking up object.");
+            Dictionary<string, object> action = new Dictionary<string, object>();
+            action["action"] = "PickupObject";
+            action["objectId"] = simObject.objectID;
+            action["forceAction"] = true;
+            this.PhysicsController.ProcessControlCommand(action);
+        }
+
+        private void PutdownObject(SimObjPhysics simObject) {
+            Debug.Log("Putting down object.");
+            Dictionary<string, object> action = new Dictionary<string, object>();
+            action["action"] = "PutObject";
+            action["objectId"] = simObject.objectID;
+            action["forceAction"] = true;
+            this.PhysicsController.ProcessControlCommand(action);
+        }
+
+        private void executeAction(string actionName, string argName, float value) {
+            Dictionary<string, object> action = new Dictionary<string, object>();
+            action["action"] = actionName;
+            action["renderImage"] = true;
+            action["onlyEmitOnAction"] = true;
+            action[argName] = value;
+            PhysicsController.ProcessControlCommand(action);
+        }
+
+        private void executeAction(string actionName) {
+            Dictionary<string, object> action = new Dictionary<string, object>();
+            action["action"] = actionName;
+            action["renderImage"] = true;
+            action["onlyEmitOnAction"] = true;
+            PhysicsController.ProcessControlCommand(action);
+        }
+
+        private SimObjPhysics GetSymObjUnderMouse(
+            SimObjPrimaryProperty[] primaryProperties,
+            SimObjSecondaryProperty[] secondaryProperties
+        ) {
+            // Raycast from mouse position
+            RaycastHit hit = new RaycastHit();
+            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            int layerMask = LayerMask.GetMask("SimObjVisible", "Procedural1", "Procedural2", "Procedural3", "Procedural0");
+            bool hitSomething = Physics.Raycast(ray, out hit, ReachableDistance, layerMask);
+
+            SimObjPhysics resultObject = null;
+            // Check for tag "SimObjPhysics"
+            if (!hitSomething || hit.transform.tag != "SimObjPhysics") {
+                return null;
+            }
+
+            // Get SimObjPhysics component
+            SimObjPhysics simObjPhysics = hit.transform.GetComponent<SimObjPhysics>();
+            if (!simObjPhysics) {
+                return null;
+            }
+
+            foreach (var primaryProperty in primaryProperties) {
+                if (simObjPhysics.PrimaryProperty == primaryProperty) {
+                    resultObject = simObjPhysics;
                 }
+            }
 
-                if (this.PhysicsController.WhatAmIHolding() != null && handMode) {
-                    var actionName = "MoveHandForce";
-                    var localPos = new Vector3(0, 0, 0);
-                    // Debug.Log(" Key down shift ? " + Input.GetKey(KeyCode.LeftAlt) + " up " + Input.GetKeyDown(KeyCode.UpArrow));
-                    if (Input.GetKeyDown(KeyCode.W)) {
-                        localPos.z += HandMoveMagnitude;
-                    } else if (Input.GetKeyDown(KeyCode.S)) {
-                        localPos.z -= HandMoveMagnitude;
-                    } else if (Input.GetKeyDown(KeyCode.UpArrow)) {
-                        localPos.y += HandMoveMagnitude;
-                    } else if (Input.GetKeyDown(KeyCode.DownArrow)) {
-                        localPos.y -= HandMoveMagnitude;
-                    } else if (Input.GetKeyDown(KeyCode.LeftArrow)) {
-                        localPos.x -= HandMoveMagnitude;
-                    } else if (Input.GetKeyDown(KeyCode.RightArrow)) {
-                        localPos.x += HandMoveMagnitude;
-                    }
-                    if (actionName != "") {
-                        Dictionary<string, object> action = new Dictionary<string, object>();
-                        action["action"] = actionName;
-                        action["x"] = localPos.x;
-                        action["y"] = localPos.y;
-                        action["z"] = localPos.z;
-
-                        this.PhysicsController.ProcessControlCommand(action);
-                    }
+            foreach (var secondaryProperty in secondaryProperties) {
+                if (simObjPhysics.SecondaryProperties.Contains(secondaryProperty)) {
+                    resultObject = simObjPhysics;
                 }
+            }
+
+            return resultObject;
+        }
+
+        private void disableUIElements() {
+            var inputModeText = GameObject.Find("DebugCanvasPhysics/InputModeText");
+            var throwForceBar = GameObject.Find("DebugCanvasPhysics/ThrowForceBar");
+            var crosshair = GameObject.Find("DebugCanvasPhysics/Crosshair");
+            var targetText = GameObject.Find("DebugCanvasPhysics/TargetText");
+            if (inputModeText) {
+                inputModeText.SetActive(false);
+            }
+            if (throwForceBar) {
+                throwForceBar.SetActive(false);
+            }
+            if (crosshair) {
+                crosshair.SetActive(false);
+            }
+            if (targetText) {
+                targetText.SetActive(false);
+            }
+        }
+
+        private void enableUIElements() {
+            var inputModeText = GameObject.Find("DebugCanvasPhysics/InputModeText");
+            var throwForceBar = GameObject.Find("DebugCanvasPhysics/ThrowForceBar");
+            var crosshair = GameObject.Find("DebugCanvasPhysics/Crosshair");
+            var targetText = GameObject.Find("DebugCanvasPhysics/TargetText");
+            if (inputModeText) {
+                inputModeText.SetActive(true);
+            }
+            if (throwForceBar) {
+                throwForceBar.SetActive(true);
+            }
+            if (crosshair) {
+                crosshair.SetActive(true);
+            }
+            if (targetText) {
+                targetText.SetActive(true);
             }
         }
     }
