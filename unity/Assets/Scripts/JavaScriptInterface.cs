@@ -23,29 +23,22 @@ public class JavaScriptInterface : MonoBehaviour {
     /*
         metadata: serialized metadata, commonly an instance of MultiAgentMetadata
      */
-    public void SendActionMetadata(string metadata)
-    {
-        try {
+    public void SendActionMetadata(string metadata) {
+#if !UNITY_EDITOR && UNITY_WEBGL
             SendMetadata(metadata);
-        } catch {
-            Debug.LogWarning("SendMetadata() not present. Probably because we're in Unity Editor.");
-        } 
+#endif
     }
 
     /*
         image: a series of bytes.
     */
-    public void SendActionImage(string key, byte[] image)
-    {
-        try {
+    public void SendActionImage(string key, byte[] image) {
+#if !UNITY_EDITOR && UNITY_WEBGL
             SendImage(key, image, image.Length);
-        } catch {
-            Debug.LogWarning("SendImage() not present. Probably because we're in Unity Editor.");
-        } 
+#endif
     }
 
-    void Start()
-    {
+    void Start() {
         this.agentManager = GameObject
             .Find("PhysicsSceneManager")
             .GetComponentInChildren<AgentManager>();
@@ -62,13 +55,11 @@ public class JavaScriptInterface : MonoBehaviour {
         Debug.Log("Calling store data");
     }
 
-    public void GetRenderPath()
-    {
+    public void GetRenderPath() {
         SendMetadata("" + GetComponentInChildren<Camera>().actualRenderingPath);
     }
 
-    public void SetController(string controlModeEnumString)
-    {
+    public void SetController(string controlModeEnumString) {
         ControlMode controlMode = (ControlMode)
             Enum.Parse(typeof(ControlMode), controlModeEnumString, true);
         // inputField.setControlMode(controlMode);
@@ -79,24 +70,20 @@ public class JavaScriptInterface : MonoBehaviour {
             out componentType
         );
         var Agent = CurrentActiveController().gameObject;
-        if (success)
-        {
+        if (success) {
             var previousComponent = Agent.GetComponent(componentType) as MonoBehaviour;
-            if (previousComponent == null)
-            {
+            if (previousComponent == null) {
                 previousComponent = Agent.AddComponent(componentType) as MonoBehaviour;
             }
             previousComponent.enabled = true;
         }
     }
 
-    public void Step(string jsonAction)
-    {
+    public void Step(string jsonAction) {
         this.agentManager.ProcessControlCommand(new DynamicServerAction(jsonAction));
     }
 
-    private BaseFPSAgentController CurrentActiveController()
-    {
+    private BaseFPSAgentController CurrentActiveController() {
         return this.agentManager.PrimaryAgent;
     }
 
