@@ -211,6 +211,7 @@ MonoBehaviour:
   - {fileID: 3054741119700942218}
   - {fileID: 26195801637813627}
   - {fileID: 2731223673477288560}
+  AgentName: agent
   DroneObjectLauncher: {fileID: 114390950229851692, guid: cdca5ee44bd7e45e9b82820e69a242f2,
     type: 3}
 --- !u!114 &114372750333748660
@@ -274,6 +275,7 @@ GameObject:
   - component: {fileID: 992261166}
   - component: {fileID: 2007864991}
   - component: {fileID: 2007864990}
+  - component: {fileID: 2029113664102051113}
   m_Layer: 10
   m_Name: FirstPersonCharacter
   m_TagString: MainCamera
@@ -495,6 +497,24 @@ MonoBehaviour:
   m_BeforeTransparentBundles: []
   m_BeforeStackBundles: []
   m_AfterStackBundles: []
+--- !u!114 &2029113664102051113
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 100002}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7d9a728850b8a4435ac862e4bfc343d8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maskMaterial: {fileID: 2100000, guid: 734dfdc470d7542b2b7e39e32f1a429a, type: 2}
+  outlineMaterial: {fileID: 2100000, guid: c212688a6c83d4ad4a27307127c56063, type: 2}
+  overlayMaterial: {fileID: 2100000, guid: 6ce6d3a763826478b93164ee3b505adc, type: 2}
+  postMaterial: {fileID: 2100000, guid: 98b8380a827f64f97a79a5f2880b4671, type: 2}
+  debugMask: {fileID: 0}
+  highlightLayerName: Highlight
 --- !u!1 &1340499340313870
 GameObject:
   m_ObjectHideFlags: 0
