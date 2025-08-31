@@ -9,7 +9,6 @@ namespace UnityStandardAssets.Characters.FirstPerson {
         private float HandMoveMagnitude = 0.1f;
         public PhysicsRemoteFPSAgentController PhysicsController = null;
         private GameObject InputMode_Text = null;
-        private ObjectPickPlaceUIController highlightController = null;
         private GameObject throwForceBar = null;
         private bool handMode = false;
         private Camera m_Camera;
