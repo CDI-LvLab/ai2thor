@@ -2,20 +2,32 @@ using UnityEngine;
 using System.Collections.Generic;
 
 public class HighlightManager : MonoBehaviour {
+    public static HighlightManager Instance { get; private set; }
+
     [Header("Materials")]
     public Material maskMaterial;   // HighlightMask shader
     public Material postMaterial;   // HighlightPost shader
-
-    [Header("Optional Debug")]
-    [SerializeField] private UnityEngine.UI.RawImage debugMask;
 
     [Header("Highlight Settings")]
     [Tooltip("Temporary layer name used for highlighted objects.")]
     public string highlightLayerName = "Highlight";
 
+    [Header("Optional Debug")]
+    [SerializeField] private UnityEngine.UI.RawImage debugMask;
+
     private Camera maskCam;
     private RenderTexture maskRT;
     private HashSet<Renderer> highlightedRenderers = new HashSet<Renderer>();
+
+    void Awake() {
+        if (Instance != null && Instance != this) {
+            Debug.LogWarning("Duplicate HighlightManager found, destroying extra one on: " + gameObject.name);
+            Destroy(this);
+            return;
+        }
+
+        Instance = this;
+    }
 
     void Start() {
         // Ensure mask camera is created after main camera exists
@@ -32,6 +44,8 @@ public class HighlightManager : MonoBehaviour {
         }
 
         if (GameObject.Find("HighlightMaskCamera")) {
+            Debug.LogWarning("HighlightMaskCamera already exists. This is a duplicate script. Disabling self...");
+            this.enabled = false;
             return;
         }
 
@@ -54,12 +68,16 @@ public class HighlightManager : MonoBehaviour {
 
         // Create or resize maskRT
         if (maskRT == null || maskRT.width != Screen.width || maskRT.height != Screen.height) {
-            if (maskRT != null) maskRT.Release();
+            if (maskRT != null) {
+                maskRT.Release();
+            }
+
             maskRT = new RenderTexture(Screen.width, Screen.height, 16, RenderTextureFormat.R8);
         }
 
-        if (postMaterial != null)
+        if (postMaterial != null) {
             postMaterial.SetTexture("_MaskTex", maskRT);
+        }
     }
 
     void LateUpdate() {
@@ -77,18 +95,26 @@ public class HighlightManager : MonoBehaviour {
     /// Add a GameObject (and children) to the highlighted set
     /// </summary>
     public void Highlight(GameObject obj) {
-        if (obj == null) return;
-        foreach (Renderer r in obj.GetComponentsInChildren<Renderer>())
+        if (obj == null) {
+            return;
+        }
+
+        foreach (Renderer r in obj.GetComponentsInChildren<Renderer>()) {
             highlightedRenderers.Add(r);
+        }
     }
 
     /// <summary>
     /// Remove a GameObject (and children) from the highlighted set
     /// </summary>
     public void Unhighlight(GameObject obj) {
-        if (obj == null) return;
-        foreach (Renderer r in obj.GetComponentsInChildren<Renderer>())
+        if (obj == null) {
+            return;
+        }
+
+        foreach (Renderer r in obj.GetComponentsInChildren<Renderer>()) {
             highlightedRenderers.Remove(r);
+        }
     }
 
     /// <summary>
@@ -102,7 +128,10 @@ public class HighlightManager : MonoBehaviour {
     /// Check if a single GameObject (includes all child renderers) is highlighted.
     /// </summary>
     public bool IsHighlighted(GameObject obj) {
-        if (obj == null) return false;
+        if (obj == null) {
+            return false;
+        }
+
         foreach (Renderer r in obj.GetComponentsInChildren<Renderer>()) {
             if (highlightedRenderers.Contains(r)) {
                 return true;
@@ -129,7 +158,10 @@ public class HighlightManager : MonoBehaviour {
 
         // Assign highlighted objects (and children) to temp layer
         foreach (var r in highlightedRenderers) {
-            if (r == null) continue;
+            if (r == null) {
+                continue;
+            }
+
             AssignLayerRecursive(r.gameObject, highlightLayer, originalLayers);
         }
 
@@ -137,8 +169,10 @@ public class HighlightManager : MonoBehaviour {
         foreach (var r in highlightedRenderers) {
             originalMats[r] = r.sharedMaterials;
             Material[] mats = new Material[r.sharedMaterials.Length];
-            for (int i = 0; i < mats.Length; i++)
+            for (int i = 0; i < mats.Length; i++) {
                 mats[i] = maskMaterial; // your flat unlit mask
+            }
+
             r.materials = mats;
         }
 
@@ -147,16 +181,19 @@ public class HighlightManager : MonoBehaviour {
         maskCam.targetTexture = maskRT;
         maskCam.Render();
 
-        foreach (var kvp in originalMats)
+        foreach (var kvp in originalMats) {
             kvp.Key.materials = kvp.Value;
+        }
 
         // Optional debug mask display
-        if (debugMask != null)
+        if (debugMask != null) {
             debugMask.texture = maskRT;
+        }
 
         // Restore original layers
-        foreach (var kvp in originalLayers)
+        foreach (var kvp in originalLayers) {
             kvp.Key.layer = kvp.Value;
+        }
 
         // Apply post-process overlay + outline
         postMaterial.SetTexture("_MainTex", src);
@@ -168,12 +205,14 @@ public class HighlightManager : MonoBehaviour {
     /// Recursively assign layer to a GameObject and all children, recording original layers
     /// </summary>
     private void AssignLayerRecursive(GameObject go, int layer, Dictionary<GameObject, int> originalLayers) {
-        if (!originalLayers.ContainsKey(go))
+        if (!originalLayers.ContainsKey(go)) {
             originalLayers.Add(go, go.layer);
+        }
 
         go.layer = layer;
 
-        foreach (Transform child in go.transform)
+        foreach (Transform child in go.transform) {
             AssignLayerRecursive(child.gameObject, layer, originalLayers);
+        }
     }
 }

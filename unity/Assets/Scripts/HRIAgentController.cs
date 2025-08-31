@@ -17,6 +17,8 @@ namespace UnityStandardAssets.Characters.FirstPerson {
         private static extern void SetCursorStyle(string style);
 
         void Start() {
+            disableUIElements();
+
 #if !UNITY_EDITOR && UNITY_WEBGL
             // disable WebGLInput.captureAllKeyboardInput so elements in web page can handle keyboard inputs
             WebGLInput.captureAllKeyboardInput = false;
@@ -42,28 +44,19 @@ namespace UnityStandardAssets.Characters.FirstPerson {
             m_Camera = Camera.main;
         }
 
-
-        public void OnEnable() {
-            disableUIElements();
-        }
-
-        public void OnDisable() {
-            enableUIElements();
-        }
-
         void Update() {
             SimObjPhysics highlighted = null;
-            HighlightUtility.Clear();
+            HighlightManager.Instance.Clear();
 
             GameObject holding = PhysicsController.WhatAmIHolding();
 
             // If we're holding an object, only allow interacting with Receptacles.
             highlighted = GetSymObjUnderMouse(
                 holding ? new SimObjPrimaryProperty[] { } : new SimObjPrimaryProperty[] { SimObjPrimaryProperty.CanPickup },
-                holding ? new SimObjSecondaryProperty[] { SimObjSecondaryProperty.Receptacle } : new SimObjSecondaryProperty[] { }
+                new SimObjSecondaryProperty[] { SimObjSecondaryProperty.Receptacle }
             );
             if (highlighted) {
-                HighlightUtility.Highlight(highlighted.gameObject);
+                HighlightManager.Instance.Highlight(highlighted.gameObject);
 #if !UNITY_EDITOR && UNITY_WEBGL
                 SetCursorStyle("pointer");
 #endif
@@ -228,10 +221,10 @@ namespace UnityStandardAssets.Characters.FirstPerson {
                 throwForceBar.SetActive(false);
             }
             if (crosshair) {
-                crosshair.SetActive(false);
+                crosshair.transform.localScale = Vector3.zero;
             }
             if (targetText) {
-                targetText.SetActive(false);
+                targetText.transform.localScale = Vector3.zero;
             }
         }
 
@@ -247,10 +240,10 @@ namespace UnityStandardAssets.Characters.FirstPerson {
                 throwForceBar.SetActive(true);
             }
             if (crosshair) {
-                crosshair.SetActive(true);
+                crosshair.transform.localScale = Vector3.one;
             }
             if (targetText) {
-                targetText.SetActive(true);
+                targetText.transform.localScale = Vector3.one;
             }
         }
     }
