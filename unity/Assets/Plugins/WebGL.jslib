@@ -1,15 +1,17 @@
 mergeInto(LibraryManager.library, {
-
   Init: function () {
     // window.alert("Init test!");
-    if (window.onGameLoaded && typeof(window.onGameLoaded) === 'function') {
-        window.onGameLoaded();
+    if (window.onGameLoaded && typeof window.onGameLoaded === "function") {
+      window.onGameLoaded();
     }
   },
-  
-  SendMetadata: function(str) {
-    if (window.onUnityMetadata && typeof window.onUnityMetadata === "function") {
-        window.onUnityMetadata(Pointer_stringify(str));
+
+  SendMetadata: function (str) {
+    if (
+      window.onUnityMetadata &&
+      typeof window.onUnityMetadata === "function"
+    ) {
+      window.onUnityMetadata(Pointer_stringify(str));
     }
   },
 
@@ -21,18 +23,24 @@ mergeInto(LibraryManager.library, {
   //   }
   // }
 
-  SendImage: function(keyPtr, arrayPtr, length) {
+  SendImage: function (keyPtr, arrayPtr, length) {
     try {
       var key = UTF8ToString(keyPtr);
       var bytes = new Uint8Array(Module.HEAPU8.buffer, arrayPtr, length);
       if (window.onUnityImage && typeof window.onUnityImage === "function") {
         window.onUnityImage(key, bytes);
       } else {
-        console.warn("onUnityImage() handler missing! You won't receive image data.");
+        console.warn(
+          "onUnityImage() handler missing! You won't receive image data."
+        );
       }
     } catch (e) {
-      console.error('Error processing image data.', e);
+      console.error("Error processing image data.", e);
     }
-  }
+  },
 
+  SetCursorStyle: function (stylePtr) {
+    var style = UTF8ToString(stylePtr);
+    document.getElementById("unity-canvas").style.cursor = style;
+  },
 });
