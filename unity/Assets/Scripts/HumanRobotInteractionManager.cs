@@ -70,7 +70,7 @@ public class HumanRobotInteractionManager : MonoBehaviour {
         // Unhide the robot model
         GameObject robotModel = GameObject.Find("FPSController(Clone)/TallVisibilityCapsule");
         foreach (
-            MeshRenderer renderer in robotModel.GetComponentsInChildren<MeshRenderer>(true) as MeshRenderer[]
+            MeshRenderer renderer in robotModel.GetComponentsInChildren<MeshRenderer>(true)
         ) {
             renderer.gameObject.SetActive(true);
             renderer.enabled = true;
@@ -79,9 +79,9 @@ public class HumanRobotInteractionManager : MonoBehaviour {
         // Hide the Human model
         GameObject humanModel = GameObject.Find("FPSController/TallVisibilityCapsule");
         foreach (
-            MeshRenderer renderer in humanModel.GetComponentsInChildren<MeshRenderer>(true) as MeshRenderer[]
+            MeshRenderer renderer in humanModel.GetComponentsInChildren<MeshRenderer>(true)
         ) {
-            // renderer.gameObject.SetActive(true);
+            renderer.gameObject.SetActive(false);
             renderer.enabled = false;
         }
     }
