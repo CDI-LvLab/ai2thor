@@ -43,4 +43,19 @@ mergeInto(LibraryManager.library, {
     var style = UTF8ToString(stylePtr);
     document.getElementById("unity-canvas").style.cursor = style;
   },
+
+  AssetsLoaded: function (stylePtr) {
+    if (window.onAssetsLoaded && typeof window.onAssetsLoaded === "function") {
+      window.onAssetsLoaded();
+    }
+  },
+
+  EmitEvent: function (eventStr, messageStr) {
+    if (window.onUnityEvent && typeof window.onUnityEvent === "function") {
+      window.onUnityEvent(
+        Pointer_stringify(eventStr),
+        Pointer_stringify(messageStr)
+      );
+    }
+  },
 });
