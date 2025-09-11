@@ -25,7 +25,7 @@ public class JavaScriptInterface : MonoBehaviour {
      */
     public void SendActionMetadata(string metadata) {
 #if !UNITY_EDITOR && UNITY_WEBGL
-            SendMetadata(metadata);
+        SendMetadata(metadata);
 #endif
     }
 
@@ -34,7 +34,7 @@ public class JavaScriptInterface : MonoBehaviour {
     */
     public void SendActionImage(string key, byte[] image) {
 #if !UNITY_EDITOR && UNITY_WEBGL
-            SendImage(key, image, image.Length);
+        SendImage(key, image, image.Length);
 #endif
     }
 
@@ -46,11 +46,9 @@ public class JavaScriptInterface : MonoBehaviour {
 
         // inputField = GameObject.Find("DebugCanvasPhysics").GetComponentInChildren<DebugInputField>();// FindObjectOfType<DebugInputField>();
         // GameObject.Find("DebugCanvas").GetComponentInChildren<AgentManager>();
-        try {
-            Init();
-        } catch {
-            Debug.LogWarning("Init() not present. Probably because we're in Unity Editor.");
-        }
+#if !UNITY_EDITOR && UNITY_WEBGL
+        Init();
+#endif
 
         Debug.Log("Calling store data");
     }
