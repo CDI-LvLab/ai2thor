@@ -13,6 +13,10 @@ using Thor.Utils;
 using UnityEngine;
 using UnityEngine.AI;
 using UnityStandardAssets.Characters.FirstPerson;
+using System.Threading.Tasks;
+using UnityEngine.Networking;
+
+
 #if UNITY_EDITOR
 using UnityEditor.SceneManagement;
 using UnityEditor;
@@ -2951,6 +2955,268 @@ namespace Thor.Procedural {
                 Texture2D tex = new Texture2D(2, 2);
                 tex.LoadImage(imageBytes);
                 mat.SetTexture("_EmissionMap", tex);
+                mat.SetColor("_EmissionColor", Color.white);
+            }
+
+            // have the mesh refer to the mesh at meshPath
+            meshObj.GetComponent<MeshFilter>().sharedMesh = mesh;
+
+            // add the rigidbody
+            Rigidbody rb = go.AddComponent<Rigidbody>();
+            if (physicalProperties != null) {
+                rb.mass = physicalProperties.mass;
+                rb.drag = physicalProperties.drag;
+                rb.angularDrag = physicalProperties.angularDrag;
+                rb.useGravity = physicalProperties.useGravity;
+                rb.isKinematic = physicalProperties.isKinematic;
+            }
+
+            // add the SimObjPhysics component
+            SimObjPhysics sop = go.AddComponent<SimObjPhysics>();
+            sop.VisibilityPoints = visPointTransforms;
+            sop.MyColliders = meshColliders.ToArray();
+            sop.assetID = name;
+            sop.objectID = name;
+
+            // add the annotations of the object
+            if (annotations == null) {
+                annotations = new ObjectAnnotations();
+            }
+            sop.PrimaryProperty = (SimObjPrimaryProperty)
+                Enum.Parse(typeof(SimObjPrimaryProperty), annotations.primaryProperty);
+            sop.Type = (SimObjType)Enum.Parse(typeof(SimObjType), annotations.objectType);
+            if (annotations.secondaryProperties == null) {
+                annotations.secondaryProperties = new string[0];
+            }
+            sop.SecondaryProperties = annotations
+                .secondaryProperties.Select(p =>
+                    (SimObjSecondaryProperty)Enum.Parse(typeof(SimObjSecondaryProperty), p)
+                )
+                .ToArray();
+            sop.syncBoundingBoxes(
+                forceCacheReset: true,
+                forceCreateObjectOrientedBoundingBox: true
+            );
+
+            if (receptacleCandidate) {
+                BaseFPSAgentController.TryToAddReceptacleTriggerBox(sop: sop);
+                GameObject receptacleTriggerBoxes = go
+                    .transform.Find("ReceptacleTriggerBoxes")
+                    .gameObject;
+                if (receptacleTriggerBoxes.transform.childCount > 0) {
+                    sop.SecondaryProperties = new SimObjSecondaryProperty[]
+                    {
+                        SimObjSecondaryProperty.Receptacle
+                    };
+                }
+            }
+
+            // Add the asset to the procedural asset database
+            var assetDb = GameObject.FindObjectOfType<ProceduralAssetDatabase>();
+            Transform prefabParentTransform = parent;
+            if (assetDb != null && assetDb.assetMap != null) {
+                assetDb.addAsset(go, procedural: true);
+                // get child object on assetDb's game object that's called "Prefabs"
+                // and add the prefab to that
+                prefabParentTransform = assetDb.transform.Find("Prefabs");
+                if (prefabParentTransform == null) {
+                    var prefabParent = new GameObject("Prefabs");
+                    prefabParent.transform.parent = assetDb.transform;
+                    prefabParent.SetActive(false);
+                    prefabParentTransform = prefabParent.transform;
+                }
+            }
+
+            // Compute the object metadata
+            // IMPORTANT: this must happen before the object is added to the prefabParent object below,
+            //            otherwise the object's bounding box will be incorrect! This has something to do with how
+            //            our bounding box computation code works where it ignores some unactive components of an object
+            var assetMeta = getAssetMetadata(sop.gameObject);
+
+            var objectMeta = SimObjPhysics.ObjectMetadataFromSimObjPhysics(sop, true, true);
+
+            go.transform.parent = prefabParentTransform;
+
+            var result = new Dictionary<string, object>
+            {
+                { "assetMetadata", assetMeta },
+                { "objectMetadata", objectMeta }
+            };
+
+            MonoBehaviour.Destroy(oldGo);
+
+            if (serializable) {
+                if (returnObject) {
+                    result["gameObject"] = go;
+                }
+            }
+            return result;
+        }
+
+        // TODO refactor to recieve a ProceduralAsset
+        public static Dictionary<string, object> CreateAsset(
+            Vector3[] vertices,
+            Vector3[] normals,
+            string name,
+            int[] triangles,
+            Vector2[]? uvs = null,
+            Texture2D albedoTexture = null,
+            Texture2D metallicSmoothnessTexture = null,
+            Texture2D normalTexture = null,
+            Texture2D emissionTexture = null,
+            SerializableCollider[]? colliders = null,
+            PhysicalProperties physicalProperties = null,
+            Vector3[]? visibilityPoints = null,
+            ObjectAnnotations annotations = null,
+            bool receptacleCandidate = false,
+            float yRotOffset = 0f,
+            bool serializable = false,
+            bool returnObject = false,
+            Transform parent = null,
+            bool addAnotationComponent = false,
+            string parentTexturesDir = ""
+        ) {
+            // create a new game object
+            GameObject go = new GameObject();
+
+            // create a new mesh
+            GameObject meshObj = new GameObject("mesh");
+            meshObj.transform.parent = go.transform;
+            Mesh mesh = new Mesh();
+            if (vertices.Length >= 65535) {
+                mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+            }
+            mesh.vertices = vertices;
+            mesh.triangles = triangles;
+            mesh.normals = normals;
+            if (uvs != null) {
+                mesh.uv = uvs;
+            }
+            mesh.RecalculateTangents();
+
+            // add the mesh to the object
+            meshObj.AddComponent<MeshRenderer>();
+            MeshFilter meshFilter = meshObj.AddComponent<MeshFilter>();
+            meshFilter.mesh = mesh;
+
+            // add the mesh colliders
+            GameObject triggerCollidersObj = new GameObject("TriggerColliders");
+            triggerCollidersObj.layer = LayerMask.NameToLayer("SimObjVisible");
+            triggerCollidersObj.transform.parent = go.transform;
+
+            GameObject meshCollidersObj = new GameObject("Colliders");
+            meshCollidersObj.layer = LayerMask.NameToLayer("SimObjVisible");
+            meshCollidersObj.transform.parent = go.transform;
+            List<Collider> meshColliders = new List<Collider>();
+            if (colliders != null && colliders.Length > 0) {
+                int i = 0;
+                foreach (var collider in colliders) {
+                    // create a mesh of the collider
+                    Mesh colliderMesh = new Mesh();
+                    colliderMesh.vertices = collider.vertices;
+                    colliderMesh.triangles = collider.triangles;
+
+                    // add the mesh collider
+                    GameObject meshColliderObj = new GameObject($"collider_{i}");
+                    meshColliderObj.layer = LayerMask.NameToLayer("SimObjVisible");
+                    meshColliderObj.transform.parent = meshCollidersObj.transform;
+                    MeshCollider meshCollider = meshColliderObj.AddComponent<MeshCollider>();
+                    meshCollider.sharedMesh = colliderMesh;
+                    meshCollider.convex = true;
+                    meshColliders.Add(meshCollider);
+
+                    // add the trigger collider
+                    GameObject triggerColliderObj = new GameObject($"trigger_{i}");
+                    triggerColliderObj.layer = LayerMask.NameToLayer("SimObjVisible");
+                    triggerColliderObj.transform.parent = triggerCollidersObj.transform;
+                    MeshCollider triggerCollider = triggerColliderObj.AddComponent<MeshCollider>();
+                    triggerCollider.sharedMesh = colliderMesh;
+                    triggerCollider.convex = true;
+                    triggerCollider.isTrigger = true;
+
+                    i++;
+                }
+            }
+
+            // add the visibility points
+            GameObject visPoints = new GameObject("VisibilityPoints");
+            visPoints.transform.parent = go.transform;
+            Transform[] visPointTransforms = new Transform[visibilityPoints.Length];
+            for (int i = 0; i < visibilityPoints.Length; i++) {
+                GameObject visPoint = new GameObject($"visPoint_{i}");
+                visPoint.transform.parent = visPoints.transform;
+                visPoint.transform.localPosition = visibilityPoints[i];
+                visPointTransforms[i] = visPoint.transform;
+                visPoint.layer = LayerMask.NameToLayer("SimObjVisible");
+            }
+
+            // Rotate the object, this requires reassigning things to a new game object
+            go.transform.Rotate(Vector3.up, yRotOffset);
+            GameObject newGo = new GameObject();
+
+            foreach (Transform t in go.GetComponentsInChildren<Transform>()) {
+                if (t.parent == go.transform) {
+                    t.parent = newGo.transform;
+                }
+            }
+            var oldGo = go;
+            go.SetActive(false);
+            go = newGo;
+
+            go.name = name;
+            go.layer = LayerMask.NameToLayer("SimObjVisible");
+            go.tag = "SimObjPhysics";
+
+            if (addAnotationComponent) {
+                go.AddComponent<Objaverse.ObjaverseAnnotation>();
+            }
+
+            Material mat = null;
+            RuntimePrefab runtimePrefab = null;
+
+            if (albedoTexture != null) {
+                // textures aren't saved as part of the prefab, so we load them from disk
+                runtimePrefab = go.AddComponent<RuntimePrefab>();
+
+                // create a new material
+                mat = new Material(Shader.Find("Standard"));
+                mat.mainTexture = albedoTexture;
+
+                // assign the material to the game object
+                meshObj.GetComponent<Renderer>().material = mat;
+                runtimePrefab.sharedMaterial = mat;
+            } else {
+                // create a new material
+                mat = new Material(Shader.Find("Standard"));
+                meshObj.GetComponent<Renderer>().material = mat;
+            }
+
+            if (metallicSmoothnessTexture != null) {
+                if (runtimePrefab == null) {
+                    runtimePrefab = go.AddComponent<RuntimePrefab>();
+                }
+                mat.EnableKeyword("_METALLICGLOSSMAP");
+                mat.SetTexture("_MetallicGlossMap", metallicSmoothnessTexture);
+            } else {
+                mat.SetFloat("_Metallic", 0f);
+                mat.SetFloat("_Glossiness", 0f);
+            }
+
+            if (normalTexture != null) {
+                if (runtimePrefab == null) {
+                    runtimePrefab = go.AddComponent<RuntimePrefab>();
+                }
+                mat.EnableKeyword("_NORMALMAP");
+                mat.SetTexture("_BumpMap", normalTexture);
+            }
+
+            if (emissionTexture != null) {
+                if (runtimePrefab == null) {
+                    runtimePrefab = go.AddComponent<RuntimePrefab>();
+                }
+                mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
+                mat.EnableKeyword("_EMISSION");
+                mat.SetTexture("_EmissionMap", emissionTexture);
                 mat.SetColor("_EmissionColor", Color.white);
             }
 
