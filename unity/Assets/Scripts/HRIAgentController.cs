@@ -3,18 +3,27 @@ using System.Runtime.InteropServices;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.Events;
+
+[System.Serializable]
+public class ObjectClickEvent : UnityEvent<SimObjPhysics, SimObjPhysics> { }
 
 namespace UnityStandardAssets.Characters.FirstPerson {
     public class HRIAgentController : MonoBehaviour {
         [SerializeField]
         private float HandMoveMagnitude = 0.1f;
         public float ReachableDistance = 5.0f;
-        public PhysicsRemoteFPSAgentController PhysicsController = null;
+        [Header("Object Highlighting")]
+        public SimObjPrimaryProperty[] HighlightablePrimaryPropertiesWhenHolding;
+        public SimObjSecondaryProperty[] HighlightableSecondaryPropertiesWhenHolding;
+        public SimObjPrimaryProperty[] HighlightablePrimaryPropertiesWhenNotHolding;
+        public SimObjSecondaryProperty[] HighlightableSecondaryPropertiesWhenNotHolding;
+
+        [Header("Events")]
+        public ObjectClickEvent onObjectClick;
+        public PhysicsRemoteFPSAgentController Controller = null;
         private bool handMode = false;
         private Camera m_Camera;
-
-        [DllImport("__Internal")]
-        private static extern void SetCursorStyle(string style);
 
         void Start() {
             disableUIElements();
@@ -35,60 +44,42 @@ namespace UnityStandardAssets.Characters.FirstPerson {
                 agentManager.SetUpPhysicsController();
             }
 
-            PhysicsController = agentManager.PrimaryAgent as PhysicsRemoteFPSAgentController;
+            Controller = agentManager.PrimaryAgent as PhysicsRemoteFPSAgentController;
 
             Cursor.visible = true;
             Cursor.lockState = CursorLockMode.None;
             Debug_Canvas.GetComponent<Canvas>().enabled = true;
 
             m_Camera = Camera.main;
+#if UNITY_EDITOR
+            var result = Controller.SpawnAsset("0a3db3f1bec64abbb2b2c0950e0ba6df", "0a3db3f1bec64abbb2b2c0950e0ba6df");
+            if (result.success) {
+                Controller.PickupObject(
+                    "0a3db3f1bec64abbb2b2c0950e0ba6df",
+                    true
+                );
+            } else {
+                Debug.LogError("Object spawning failed: " + result.errorMessage);
+            }
+#endif
         }
 
         void Update() {
             SimObjPhysics highlighted = null;
             HighlightManager.Instance.Clear();
 
-            GameObject holding = PhysicsController.WhatAmIHolding();
+            GameObject holding = Controller.WhatAmIHolding();
 
             // If we're holding an object, only allow interacting with Receptacles.
             highlighted = GetSymObjUnderMouse(
-                holding ? new SimObjPrimaryProperty[] { } : new SimObjPrimaryProperty[] { SimObjPrimaryProperty.CanPickup },
-                new SimObjSecondaryProperty[] { SimObjSecondaryProperty.Receptacle }
+                holding ? HighlightablePrimaryPropertiesWhenHolding : HighlightablePrimaryPropertiesWhenNotHolding,
+                holding ? HighlightableSecondaryPropertiesWhenHolding : HighlightableSecondaryPropertiesWhenNotHolding
             );
             if (highlighted) {
-                HighlightManager.Instance.Highlight(highlighted.gameObject);
-#if !UNITY_EDITOR && UNITY_WEBGL
-                SetCursorStyle("pointer");
-#endif
-                if (Input.GetMouseButtonDown(0)) {
-                    if (!holding && highlighted.PrimaryProperty == SimObjPrimaryProperty.CanPickup) {
-                        // We can only pick up an object if not holding another one.
-                        PickupObject(highlighted);
-                    } else if (highlighted.SecondaryProperties.Contains(SimObjSecondaryProperty.Receptacle)) {
-                        // Otherwise, we're looking for somewhere to put the object.
-                        if (highlighted.SecondaryProperties.Contains(SimObjSecondaryProperty.CanOpen)) {
-                            // If the receptacle can be opened, toggle it to ensure that it is open before putting the object in.
-                            if (holding && highlighted.GetComponent<CanOpen_Object>().isOpen) {
-                                // If already open, then directly put in.
-                                PutdownObject(highlighted);
-                            } else {
-                                // Otherwise toggle open/close receptacle
-                                ToggleReceptacle(highlighted);
-                            }
-                        } else if (holding) {
-                            // Otherwise, the highlighted thing is a receptacle that is always open, like a pan or a bowl.
-                            // In a holding state, we treat pickup-able receptacles as receptacles first.
-                            PutdownObject(highlighted);
-                        }
-                    }
-                }
-            } else {
-#if !UNITY_EDITOR && UNITY_WEBGL
-                SetCursorStyle("default");
-#endif
+                onObjectClick.Invoke(highlighted, holding ? holding.GetComponent<SimObjPhysics>() : null);
             }
-
-            if (PhysicsController.ReadyForCommand) {
+#if UNITY_EDITOR
+            if (Controller.ReadyForCommand) {
                 float WalkMagnitude = 0.25f;
                 if (!handMode) {
                     if (Input.GetKeyDown(KeyCode.W)) {
@@ -116,43 +107,15 @@ namespace UnityStandardAssets.Characters.FirstPerson {
                     }
 
                     if (Input.GetKeyDown(KeyCode.LeftArrow)) {//|| Input.GetKeyDown(KeyCode.J)) {
-                        executeAction("RotateLeft", "degrees", 30f);
+                        executeAction("RotateLeft", "degrees", 45f);
                     }
 
                     if (Input.GetKeyDown(KeyCode.RightArrow)) {//|| Input.GetKeyDown(KeyCode.L)) {
-                        executeAction("RotateRight", "degrees", 30f);
+                        executeAction("RotateRight", "degrees", 45f);
                     }
                 }
             }
-        }
-
-        private void ToggleReceptacle(SimObjPhysics receptacle) {
-            Debug.Log("Toggling Receptacle");
-            Dictionary<string, object> action = new Dictionary<string, object>();
-            action["action"] = receptacle.GetComponent<CanOpen_Object>().isOpen
-                ? "CloseObject"
-                : "OpenObject";
-            action["objectId"] = receptacle.objectID;
-            action["forceAction"] = true;
-            this.PhysicsController.ProcessControlCommand(action);
-        }
-
-        private void PickupObject(SimObjPhysics simObject) {
-            Debug.Log("Picking up object.");
-            Dictionary<string, object> action = new Dictionary<string, object>();
-            action["action"] = "PickupObject";
-            action["objectId"] = simObject.objectID;
-            action["forceAction"] = true;
-            this.PhysicsController.ProcessControlCommand(action);
-        }
-
-        private void PutdownObject(SimObjPhysics simObject) {
-            Debug.Log("Putting down object.");
-            Dictionary<string, object> action = new Dictionary<string, object>();
-            action["action"] = "PutObject";
-            action["objectId"] = simObject.objectID;
-            action["forceAction"] = true;
-            this.PhysicsController.ProcessControlCommand(action);
+#endif
         }
 
         private void executeAction(string actionName, string argName, float value) {
@@ -161,7 +124,7 @@ namespace UnityStandardAssets.Characters.FirstPerson {
             action["renderImage"] = true;
             action["onlyEmitOnAction"] = true;
             action[argName] = value;
-            PhysicsController.ProcessControlCommand(action);
+            Controller.ProcessControlCommand(action);
         }
 
         private void executeAction(string actionName) {
@@ -169,7 +132,7 @@ namespace UnityStandardAssets.Characters.FirstPerson {
             action["action"] = actionName;
             action["renderImage"] = true;
             action["onlyEmitOnAction"] = true;
-            PhysicsController.ProcessControlCommand(action);
+            Controller.ProcessControlCommand(action);
         }
 
         private SimObjPhysics GetSymObjUnderMouse(
@@ -177,36 +140,38 @@ namespace UnityStandardAssets.Characters.FirstPerson {
             SimObjSecondaryProperty[] secondaryProperties
         ) {
             // Raycast from mouse position
-            RaycastHit hit = new RaycastHit();
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-            int layerMask = LayerMask.GetMask("SimObjVisible", "Procedural1", "Procedural2", "Procedural3", "Procedural0");
-            bool hitSomething = Physics.Raycast(ray, out hit, ReachableDistance, layerMask);
+            int layerMask = LayerMask.GetMask("SimObjVisible", "Procedural1", "Procedural2", "Procedural3", "Procedural0", "PlaceableSurface");
+            RaycastHit[] hits = Physics.RaycastAll(ray, ReachableDistance, layerMask, QueryTriggerInteraction.Collide);
+            Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
 
-            SimObjPhysics resultObject = null;
-            // Check for tag "SimObjPhysics"
-            if (!hitSomething || hit.transform.tag != "SimObjPhysics") {
-                return null;
-            }
+            foreach (var hit in hits) {
+                // Check for tag "SimObjPhysics"
+                if (hit.transform.tag != "SimObjPhysics") {
+                    continue;
+                }
 
-            // Get SimObjPhysics component
-            SimObjPhysics simObjPhysics = hit.transform.GetComponent<SimObjPhysics>();
-            if (!simObjPhysics) {
-                return null;
-            }
+                // Get SimObjPhysics component
+                SimObjPhysics simObjPhysics = hit.transform.GetComponent<SimObjPhysics>();
+                // Debug.LogWarning(simObjPhysics ? simObjPhysics.assetID : null);
+                if (!simObjPhysics) {
+                    continue;
+                }
 
-            foreach (var primaryProperty in primaryProperties) {
-                if (simObjPhysics.PrimaryProperty == primaryProperty) {
-                    resultObject = simObjPhysics;
+                foreach (var primaryProperty in primaryProperties) {
+                    if (simObjPhysics.PrimaryProperty == primaryProperty) {
+                        return simObjPhysics;
+                    }
+                }
+
+                foreach (var secondaryProperty in secondaryProperties) {
+                    if (simObjPhysics.SecondaryProperties.Contains(secondaryProperty)) {
+                        return simObjPhysics;
+                    }
                 }
             }
 
-            foreach (var secondaryProperty in secondaryProperties) {
-                if (simObjPhysics.SecondaryProperties.Contains(secondaryProperty)) {
-                    resultObject = simObjPhysics;
-                }
-            }
-
-            return resultObject;
+            return null;
         }
 
         private void disableUIElements() {
