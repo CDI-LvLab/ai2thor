@@ -1128,7 +1128,7 @@ public class AgentManager : MonoBehaviour, ActionInvokable {
         );
     }
 
-    private byte[] captureCamera(Camera cam, int maxSize = 1280, int quality = 75) {
+    private byte[] captureCamera(Camera cam, int maxSize = 1024, int quality = 75) {
         int screenW = UnityEngine.Screen.width;
         int screenH = UnityEngine.Screen.height;
 
@@ -1141,23 +1141,35 @@ public class AgentManager : MonoBehaviour, ActionInvokable {
 
         // Create a temporary RenderTexture at the size you want
         RenderTexture rt = RenderTexture.GetTemporary(
-            UnityEngine.Screen.width,
-            UnityEngine.Screen.height,
+            screenW,
+            screenH,
             24,
             RenderTextureFormat.ARGB32
         );
+
+        // Before rendering, back up the original culling mask
+        int originalMask = cam.cullingMask;
+
+        // Exclude the "Agent" layer
+        int agentLayer = LayerMask.NameToLayer("Agent");
+        if (agentLayer >= 0) {
+            cam.cullingMask &= ~(1 << agentLayer);
+        }
 
         // Render the camera into the offscreen RT
         cam.targetTexture = rt;
         cam.Render();
 
+        // Restore the culling mask after rendering
+        cam.cullingMask = originalMask;
+
         // Activate RT and read pixels from it
         RenderTexture.active = rt;
 
-        if (tex.height != UnityEngine.Screen.height || tex.width != UnityEngine.Screen.width) {
+        if (tex.width != screenW || tex.height != screenH) {
             tex = new Texture2D(
-                UnityEngine.Screen.width,
-                UnityEngine.Screen.height,
+                screenW,
+                screenH,
                 TextureFormat.RGB24,
                 false
             );
