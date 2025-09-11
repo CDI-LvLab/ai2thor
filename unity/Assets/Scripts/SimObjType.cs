@@ -425,7 +425,8 @@ public static class ReceptacleRestrictions {
         SimObjType.Book,
         SimObjType.EggCracked,
         SimObjType.Dumbbell,
-        SimObjType.TableTopDecor
+        SimObjType.TableTopDecor,
+        SimObjType.Objaverse
     };
 
     // Each sim object type keeps track of what sort of Receptacles it can be placed in
